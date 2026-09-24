@@ -1,0 +1,54 @@
+# 放到 lkebnl/work-log 的 .github/workflows/weekly-summary.yml
+# 配套脚本：.github/scripts/weekly_report.py
+# 每周五 17:00（美东夏令时）：生成周报 + 每周精力分布图，新建一个「周报 日期」issue。
+# 也可在 Actions 页面手动运行。
+name: Weekly work-log summary
+
+on:
+  schedule:
+    - cron: '0 21 * * 5'   # UTC 21:00 周五 = EDT 17:00（冬令时为 16:00）
+  workflow_dispatch:
+    inputs:
+      days:
+        description: '周报覆盖最近几天'
+        default: '7'
+      weeks:
+        description: '精力分布图显示最近几周'
+        default: '8'
+
+permissions:
+  contents: write   # 把图表提交到 charts/
+  issues: write
+  models: read      # 用 GITHUB_TOKEN 调用 GitHub Models
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install chart dependencies
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+          pip install -q matplotlib
+
+      - name: Build report and chart
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DAYS: ${{ inputs.days || '7' }}
+          WEEKS: ${{ inputs.weeks || '8' }}
+        run: python3 .github/scripts/weekly_report.py
+
+      - name: Commit chart
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add charts/
+          git diff --cached --quiet || git commit -m "chore: weekly effort chart $(date -u +%F)"
+          git push
+
+      - name: Post summary issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue create -R "${{ github.repository }}" --title "周报 $(TZ=America/New_York date +%F)" --body-file summary.md
