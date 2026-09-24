@@ -1,6 +1,6 @@
 # 放到 lkebnl/work-log 的 .github/workflows/weekly-summary.yml
 # 配套脚本：.github/scripts/weekly_report.py
-# 每周五 17:00（美东夏令时）：生成周报 + 每周精力分布图，新建一个 "Weekly report 日期" issue（默认英文，可切换中文）。
+# 每周五 17:00（美东夏令时）：生成周报 + 每日活跃度图 + 每周精力分布图，新建一个 "Weekly report 日期" issue（默认英文，可切换中文）。
 # 也可在 Actions 页面手动运行。
 name: Weekly work-log summary
 
@@ -15,6 +15,9 @@ on:
       weeks:
         description: '精力分布图显示最近几周'
         default: '8'
+      daily_days:
+        description: '每日图显示最近几天'
+        default: '14'
       lang:
         description: '输出语言 en / zh'
         default: 'en'
@@ -41,6 +44,7 @@ jobs:
           REPO: ${{ github.repository }}
           DAYS: ${{ inputs.days || '7' }}
           WEEKS: ${{ inputs.weeks || '8' }}
+          DAILY_DAYS: ${{ inputs.daily_days || '14' }}
           REPORT_LANG: ${{ inputs.lang || 'en' }}
         run: python3 .github/scripts/weekly_report.py
 
