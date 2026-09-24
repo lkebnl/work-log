@@ -13,6 +13,7 @@ work-log 周报 + 每周精力分布图
   DAYS      周报覆盖最近几天，默认 7
   WEEKS     图表显示最近几周，默认 8
   MODEL     GitHub Models 的模型名，默认 openai/gpt-4.1-mini
+  LANG      输出语言：en（默认）或 zh
   DEMO=1    不联网，用样例数据测试出图
 """
 import collections, datetime as dt, json, os, random, re, urllib.request
@@ -30,6 +31,38 @@ DAYS = int(os.environ.get("DAYS", "7"))
 WEEKS = int(os.environ.get("WEEKS", "8"))
 MODEL = os.environ.get("MODEL", "openai/gpt-4.1-mini")
 DEMO = os.environ.get("DEMO") == "1"
+LANG = os.environ.get("REPORT_LANG", os.environ.get("LANG_OUT", "en")).lower()
+LANG = "zh" if LANG.startswith("zh") else "en"
+
+T = {
+    "en": {
+        "ylabel": "Log entries", "xlabel": "Week (starting Monday)",
+        "title": "Weekly effort by workstream · {repo} (sub-issues rolled up)",
+        "h_chart": "Weekly effort distribution", "alt": "Weekly effort distribution",
+        "col": ("Workstream", "This week", "Last {n} weeks"),
+        "raw": "This week's raw log", "none": "none",
+        "empty": "_No new log entries this week._", "demo": "_(Demo mode, model not called.)_",
+        "fail": "_Summary generation failed: {e}_",
+        "prompt": ("Below are my daily progress notes from this week, grouped by workstream "
+                   "(sub-issues are rolled up into their parent workstream). Some notes are in Chinese. "
+                   "Write a concise weekly report in English for my supervisor: for each workstream give "
+                   "2-4 bullet points covering what was done, results/data, and next steps. "
+                   "Do not invent anything not in the notes; keep board IDs, serial numbers and other "
+                   "identifiers exactly as written. End with a short list of cross-workstream risks or open items.\n\n"),
+    },
+    "zh": {
+        "ylabel": "日志条数", "xlabel": "周（周一起）",
+        "title": "每周精力分布 · {repo} · 按工作线（sub-issue 归入父级）",
+        "h_chart": "每周精力分布", "alt": "每周精力分布",
+        "col": ("工作线", "本周条数", "近 {n} 周合计"),
+        "raw": "本周原始日志", "none": "无",
+        "empty": "_本周没有新的日志。_", "demo": "_（测试模式，未调用模型）_",
+        "fail": "_周报生成失败：{e}_",
+        "prompt": ("下面是我这一周在各工作线下记录的每日进展（sub-issue 已归入所属工作线）。"
+                   "请整理成简洁的中文周报：每条工作线 2-4 个要点，写清完成了什么、结果/数据、下一步。"
+                   "不要编造日志中没有的内容，保留板号、编号等原始信息。最后列出跨工作线的风险或待办。\n\n"),
+    },
+}[LANG]
 
 # 固定顺序的分类色（按工作线 issue 编号排序后依次分配，颜色跟着工作线走）
 PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
@@ -140,14 +173,14 @@ def draw(weeks, streams, counts, labels, path):
         if total:
             ax.text(i, total + max(bottom) * 0.015, str(total), ha="center", va="bottom", fontsize=9, color="#0b0b0b")
     ax.set_xticks(list(x), [f"{w.month}/{w.day}" for w in weeks], color="#52514e")
-    ax.set_ylabel("日志条数", color="#52514e")
-    ax.set_title(f"每周精力分布 · {REPO} · 按工作线（sub-issue 归入父级）", loc="left", fontsize=12, color="#0b0b0b", pad=12)
+    ax.set_ylabel(T["ylabel"], color="#52514e")
+    ax.set_title(T["title"].format(repo=REPO), loc="left", fontsize=12, color="#0b0b0b", pad=12)
     ax.grid(axis="y", color="#e1e0d9", linewidth=0.8, zorder=0)
     for side in ["top", "right", "left"]:
         ax.spines[side].set_visible(False)
     ax.spines["bottom"].set_color("#c3c2b7")
     ax.tick_params(axis="both", length=0, colors="#52514e")
-    ax.set_xlabel("周（周一起）", color="#898781")
+    ax.set_xlabel(T["xlabel"], color="#898781")
     ax.legend(loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False, fontsize=9)
     fig.tight_layout()
     fig.savefig(path, facecolor=fig.get_facecolor())
@@ -156,9 +189,7 @@ def draw(weeks, streams, counts, labels, path):
 
 # ---------- 周报 ----------
 def summarize(log):
-    prompt = ("下面是我这一周在各工作线下记录的每日进展（sub-issue 已归入所属工作线）。"
-              "请整理成简洁的中文周报：每条工作线 2-4 个要点，写清完成了什么、结果/数据、下一步。"
-              "不要编造日志中没有的内容，保留板号、编号等原始信息。最后列出跨工作线的风险或待办。\n\n" + log)
+    prompt = T["prompt"] + log
     req = urllib.request.Request(
         "https://models.github.ai/inference/chat/completions",
         data=json.dumps({"model": MODEL, "temperature": 0.2,
@@ -201,24 +232,25 @@ def main():
 
     # 本周计数表（图片加载不出来时也能看）
     wk = counts[this_monday]
-    table = "| 工作线 | 本周条数 | 近 %d 周合计 |\n|---|---:|---:|\n" % WEEKS
+    c1, c2, c3 = T["col"]
+    table = f"| {c1} | {c2} | {c3.format(n=WEEKS)} |\n|---|---:|---:|\n"
     for s in sorted(streams, key=lambda s: -wk.get(s, 0)):
         table += f"| {labels[s]} | {wk.get(s, 0)} | {sum(counts[w].get(s, 0) for w in weeks)} |\n"
 
     if not groups:
-        text = "_本周没有新的日志。_"
+        text = T["empty"]
     elif DEMO or not TOKEN:
-        text = "_（测试模式，未调用模型）_"
+        text = T["demo"]
     else:
         try:
             text = summarize(log)
         except Exception as e:  # 模型调用失败时仍然发布图表和原始日志
-            text = f"_周报生成失败：{e}_"
+            text = T["fail"].format(e=e)
 
     img = f"https://raw.githubusercontent.com/{REPO}/HEAD/charts/effort-{stamp}.png"
     with open("summary.md", "w") as f:
-        f.write(f"{text}\n\n## 每周精力分布\n\n![每周精力分布]({img})\n\n{table}\n"
-                f"<details><summary>本周原始日志</summary>\n\n{log or '无'}\n\n</details>\n")
+        f.write(f"{text}\n\n## {T['h_chart']}\n\n![{T['alt']}]({img})\n\n{table}\n"
+                f"<details><summary>{T['raw']}</summary>\n\n{log or T['none']}\n\n</details>\n")
     print(f"weeks={len(weeks)} streams={len(streams)} comments={len(comments)} this_week={sum(wk.values())}")
 
 
