@@ -119,7 +119,9 @@ gh issue list -R lkebnl/work-log --state all --limit 500 \
 
 每周五自动完成：
 1. 拉取最近 8 周的 comment，sub-issue 的日志归入顶层工作线；
-2. 画每周精力分布图 → `charts/effort-latest.png`（历史图按日期保存）；
+2. 画两张图（历史图按日期保存）：
+   - 每日活跃度（最近 14 天，周末日期淡色）→ `charts/daily-latest.png`
+   - 每周精力分布（最近 8 周，开头没有数据的周省略）→ `charts/effort-latest.png`
 3. 用 GitHub Models 把本周日志整理成周报；
 4. 新建一个 `Weekly report YYYY-MM-DD` issue，包含周报、图、统计表和折叠的原始日志。
 
@@ -157,6 +159,10 @@ on:
 ### 在 README 显示图
 
 ```markdown
+## Daily activity
+
+![Daily log entries](charts/daily-latest.png)
+
 ## Weekly effort
 
 ![Weekly effort by workstream](charts/effort-latest.png)
