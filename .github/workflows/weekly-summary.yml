@@ -6,7 +6,7 @@ name: Weekly work-log summary
 
 on:
   schedule:
-    - cron: '0 21 * * 5'   # UTC 21:00 周五 = EDT 17:00（冬令时为 16:00）
+        - cron: '0 3 * * 6'    # UTC 03:00 周六 = EDT 周五 23:00（冬令时为 22:00）
   workflow_dispatch:
     inputs:
       days:
