@@ -11,7 +11,8 @@ work-log 周报 + 每周精力分布图
   REPO      owner/repo（Actions 里自动传入）
   GH_TOKEN  GitHub token（Actions 里用 github.token）
   DAYS      周报覆盖最近几天，默认 7
-  WEEKS     图表显示最近几周，默认 8
+  WEEKS     每周图显示最近几周，默认 8（开头没有数据的周会被省略）
+  DAILY_DAYS 每日图显示最近几天，默认 14
   MODEL     GitHub Models 的模型名，默认 openai/gpt-4.1-mini
   LANG      输出语言：en（默认）或 zh
   DEMO=1    不联网，用样例数据测试出图
@@ -23,12 +24,14 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
+from matplotlib.ticker import MaxNLocator
 
 TZ = ZoneInfo("America/New_York")
 REPO = os.environ.get("REPO", "lkebnl/work-log")
 TOKEN = os.environ.get("GH_TOKEN", "")
 DAYS = int(os.environ.get("DAYS", "7"))
 WEEKS = int(os.environ.get("WEEKS", "8"))
+DAILY_DAYS = int(os.environ.get("DAILY_DAYS", "14"))
 MODEL = os.environ.get("MODEL", "openai/gpt-4.1-mini")
 DEMO = os.environ.get("DEMO") == "1"
 LANG = os.environ.get("REPORT_LANG", os.environ.get("LANG_OUT", "en")).lower()
@@ -38,6 +41,8 @@ T = {
     "en": {
         "ylabel": "Log entries", "xlabel": "Week (starting Monday)",
         "title": "Weekly effort by workstream · {repo} (sub-issues rolled up)",
+        "title_day": "Daily log entries · last {n} days · {repo}",
+        "xlabel_day": "Day", "h_day": "Daily activity", "wd": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
         "h_chart": "Weekly effort distribution", "alt": "Weekly effort distribution",
         "col": ("Workstream", "This week", "Last {n} weeks"),
         "raw": "This week's raw log", "none": "none",
@@ -53,6 +58,8 @@ T = {
     "zh": {
         "ylabel": "日志条数", "xlabel": "周（周一起）",
         "title": "每周精力分布 · {repo} · 按工作线（sub-issue 归入父级）",
+        "title_day": "每日日志 · 最近 {n} 天 · {repo}",
+        "xlabel_day": "日期", "h_day": "每日活跃度", "wd": ["一", "二", "三", "四", "五", "六", "日"],
         "h_chart": "每周精力分布", "alt": "每周精力分布",
         "col": ("工作线", "本周条数", "近 {n} 周合计"),
         "raw": "本周原始日志", "none": "无",
@@ -158,30 +165,37 @@ def pick_font():
     return "DejaVu Sans"
 
 
-def draw(weeks, streams, counts, labels, path):
+def draw(periods, ticks, streams, colors, counts, labels, title, xlabel, path, muted=()):
     plt.rcParams.update({"font.family": pick_font(), "font.size": 10, "axes.unicode_minus": False})
-    fig, ax = plt.subplots(figsize=(9, 4.6), dpi=160)
+    fig, ax = plt.subplots(figsize=(max(6.5, 3.2 + 0.52 * len(periods)), 4.6), dpi=160)
     fig.patch.set_facecolor("#fcfcfb"); ax.set_facecolor("#fcfcfb")
-    x = range(len(weeks))
-    bottom = [0] * len(weeks)
-    for k, s in enumerate(streams):
-        vals = [counts[w].get(s, 0) for w in weeks]
-        ax.bar(x, vals, width=0.58, bottom=bottom, color=PALETTE[k % len(PALETTE)],
+    x = list(range(len(periods)))
+    bottom = [0] * len(periods)
+    for s in streams:
+        vals = [counts[p].get(s, 0) for p in periods]
+        ax.bar(x, vals, width=0.62, bottom=bottom, color=colors[s],
                edgecolor="#fcfcfb", linewidth=1.5, label=labels[s], zorder=3)
         bottom = [b + v for b, v in zip(bottom, vals)]
+    top = max(bottom) if any(bottom) else 1
     for i, total in enumerate(bottom):
         if total:
-            ax.text(i, total + max(bottom) * 0.015, str(total), ha="center", va="bottom", fontsize=9, color="#0b0b0b")
-    ax.set_xticks(list(x), [f"{w.month}/{w.day}" for w in weeks], color="#52514e")
+            ax.text(i, total + top * 0.015, str(total), ha="center", va="bottom", fontsize=9, color="#0b0b0b")
+    ax.set_ylim(0, top * 1.12)
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))      # 条数只显示整数刻度
+    ax.set_xticks(x, ticks)
+    ax.set_xlim(-0.6, max(len(periods), 6) - 0.4)                # 数据少时柱子不会被拉得很宽
     ax.set_ylabel(T["ylabel"], color="#52514e")
-    ax.set_title(T["title"].format(repo=REPO), loc="left", fontsize=12, color="#0b0b0b", pad=12)
+    ax.set_title(title, loc="left", fontsize=12, color="#0b0b0b", pad=12)
     ax.grid(axis="y", color="#e1e0d9", linewidth=0.8, zorder=0)
     for side in ["top", "right", "left"]:
         ax.spines[side].set_visible(False)
     ax.spines["bottom"].set_color("#c3c2b7")
     ax.tick_params(axis="both", length=0, colors="#52514e")
-    ax.set_xlabel(T["xlabel"], color="#898781")
-    ax.legend(loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False, fontsize=9)
+    for i, lab in enumerate(ax.get_xticklabels()):
+        lab.set_color("#b5b3ac" if i in muted else "#52514e")   # 周末日期淡色
+    ax.set_xlabel(xlabel, color="#898781")
+    if streams:
+        ax.legend(loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False, fontsize=9)
     fig.tight_layout()
     fig.savefig(path, facecolor=fig.get_facecolor())
     plt.close(fig)
@@ -210,15 +224,35 @@ def main():
     # 图表数据
     weeks = [first_monday + dt.timedelta(weeks=i) for i in range(WEEKS)]
     counts = {w: collections.Counter() for w in weeks}
+    today = now.astimezone(TZ).date()
+    days = [today - dt.timedelta(days=DAILY_DAYS - 1 - i) for i in range(DAILY_DAYS)]
+    dcounts = {d: collections.Counter() for d in days}
     for c in comments:
-        counts[week_start(c["created"])][top_level(c["issue"], parent)] += 1
+        top = top_level(c["issue"], parent)
+        counts[week_start(c["created"])][top] += 1
+        d = c["created"].astimezone(TZ).date()
+        if d in dcounts:
+            dcounts[d][top] += 1
     streams = sorted({s for w in weeks for s in counts[w]})
     labels = {s: f"{short_label(by_num[s]['title'])} #{s}" for s in streams}
+    colors = {s: PALETTE[k % len(PALETTE)] for k, s in enumerate(streams)}   # 两张图同一工作线同色
+
+    # 每周图：省略开头没有数据的周（仓库刚建时不会出现一排空柱）
+    shown = weeks
+    while len(shown) > 1 and not counts[shown[0]]:
+        shown = shown[1:]
 
     os.makedirs("charts", exist_ok=True)
-    stamp = now.astimezone(TZ).date().isoformat()
-    draw(weeks, streams, counts, labels, "charts/effort-latest.png")
-    draw(weeks, streams, counts, labels, f"charts/effort-{stamp}.png")
+    stamp = today.isoformat()
+    for name in ("effort-latest.png", f"effort-{stamp}.png"):
+        draw(shown, [f"{w.month}/{w.day}" for w in shown], streams, colors, counts, labels,
+             T["title"].format(repo=REPO), T["xlabel"], f"charts/{name}")
+    dticks = [f"{d.month}/{d.day}\n{T['wd'][d.weekday()]}" for d in days]
+    weekend = {i for i, d in enumerate(days) if d.weekday() >= 5}
+    dstreams = [s for s in streams if any(dcounts[d].get(s) for d in days)]
+    for name in ("daily-latest.png", f"daily-{stamp}.png"):
+        draw(days, dticks, dstreams, colors, dcounts, labels,
+             T["title_day"].format(n=DAILY_DAYS, repo=REPO), T["xlabel_day"], f"charts/{name}", muted=weekend)
 
     # 本周日志，按顶层工作线分组
     cutoff = now - dt.timedelta(days=DAYS)
@@ -247,9 +281,10 @@ def main():
         except Exception as e:  # 模型调用失败时仍然发布图表和原始日志
             text = T["fail"].format(e=e)
 
-    img = f"https://raw.githubusercontent.com/{REPO}/HEAD/charts/effort-{stamp}.png"
+    raw = f"https://raw.githubusercontent.com/{REPO}/HEAD/charts"
     with open("summary.md", "w") as f:
-        f.write(f"{text}\n\n## {T['h_chart']}\n\n![{T['alt']}]({img})\n\n{table}\n"
+        f.write(f"{text}\n\n## {T['h_day']}\n\n![{T['h_day']}]({raw}/daily-{stamp}.png)\n\n"
+                f"## {T['h_chart']}\n\n![{T['alt']}]({raw}/effort-{stamp}.png)\n\n{table}\n"
                 f"<details><summary>{T['raw']}</summary>\n\n{log or T['none']}\n\n</details>\n")
     print(f"weeks={len(weeks)} streams={len(streams)} comments={len(comments)} this_week={sum(wk.values())}")
 
