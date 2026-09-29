@@ -8,9 +8,12 @@ work-log automation (standard library only).
 log  : rolling window from the end of the previous log to now. Collects every
        issue comment and open/close/reopen event, grouped by parent issue.
        Output: logs/YYYY/YYYY-MM-DD.md. No AI involved; issue bodies are skipped.
-plan : today's plan from the Project "Status" field (In Progress / Todo /
-       Blocked), with each item's latest comment, activity since the last log,
-       and stale items. Output: plans/YYYY/YYYY-MM-DD.md.
+plan : today's plan. Deterministic list from the Project "Status" field
+       (In Progress / Todo / Blocked) with each item's latest comment, activity
+       since the last log and stale items, plus 3-5 AI suggestions on top
+       (GitHub Models; suggestions citing issues outside the list are dropped;
+       falls back to the list alone if the model call fails).
+       Output: plans/YYYY/YYYY-MM-DD.md.
 
 Environment:
   GITHUB_TOKEN     required (provided automatically in Actions)
@@ -18,6 +21,8 @@ Environment:
   PROJECT_TOKEN    optional, classic PAT with read:project (needed for Status)
   PROJECT_OWNER    optional, project owner login, default = REPO owner
   PROJECT_NUMBER   optional, the N in .../projects/N
+  MODEL            optional, GitHub Models name, default openai/gpt-4.1-mini
+  PLAN_AI          optional, set to 0 to disable AI suggestions
 """
 from __future__ import annotations
 
@@ -310,16 +315,113 @@ def bucket(status):
     return "other"
 
 
+_COMMENTS = {}
+
+
+def comments_of(n):
+    if n not in _COMMENTS:
+        _COMMENTS[n] = get(f"/repos/{REPO}/issues/{n}/comments", per_page=100)
+    return _COMMENTS[n]
+
+
 def last_comment(n):
-    cs = get(f"/repos/{REPO}/issues/{n}/comments", per_page=100)
+    cs = comments_of(n)
     return cs[-1] if cs else None
 
 
-def render_plan(now, issues, pm, fields, overnight, since):
+def plan_buckets(issues, fields):
+    """{'prog'|'todo'|'block'|'backlog'|'done'|'other'|'all': [open issue...]}"""
     open_issues = [i for i in issues if i["state"] == "open"]
+    if fields is None:
+        return {"all": open_issues}
+    by = {}
+    for i in open_issues:
+        by.setdefault(bucket(fields.get(i["number"], (None, None))[0]), []).append(i)
+    return by
+
+
+# ---------------------------------------------------------------- AI suggestions
+AI_PROMPT = """你是一位实验室工程师的助理。下面是他今天的工作清单（来自 GitHub issue 与项目看板），每项附最近几条工作记录。请写"今日建议"。
+
+规则：
+1. 3–5 条，按建议的执行先后排列。每条一行，格式：
+   - #编号 具体的下一步动作（依据：MM-DD HH:MM 记录）
+2. 只能引用清单中出现的 issue 编号；不得新增任务，不得编造清单中没有的事实、结果、数值或人名。
+3. 下一步动作要从记录内容推出；记录不足以判断时，写"确认当前进展并补充记录"。
+4. 优先考虑：进行中且最近有进展的项、可以解除阻塞的动作、超过 7 天未更新的项、P0。
+5. 可以一起做的事（同一设备、同一地点、同一人）合并为一条，列出多个编号。
+6. 只输出列表，不要开头语和结尾语。用中文；板号、设备名、英文术语保留原文。
+
+清单：
+"""
+
+
+def plan_context(by, fields, pm, now, overnight):
+    labels = {"prog": "In Progress", "todo": "Todo", "block": "Blocked", "all": "Open"}
+    lines = [f"今天：{day_title(now)}"]
+    for key, label in labels.items():
+        for i in by.get(key, []):
+            n = i["number"]
+            pri = (fields or {}).get(n, (None, None))[1]
+            pn, pt = group_key(i, pm)
+            parent = f"；工作线：{pt} #{pn}" if pn != n else ""
+            lines.append(f"\n[{label}] #{n} {i['title']}" + (f"（{pri}）" if pri else "")
+                         + f"{parent}；最后更新 {nyf(ts(i['updated_at']), '%m-%d')}")
+            for c in comments_of(n)[-3:]:
+                lines.append(f"  - {nyf(ts(c['created_at']))}：{snippet(c.get('body'), 300)}")
+    if overnight:
+        lines.append("\n[昨晚 18:00 之后的新动态]")
+        for i, es in overnight:
+            for e in es:
+                what = snippet(e["text"], 200) if e["kind"] == "comment" else f"状态：{e['text']}"
+                lines.append(f"  - #{i['number']} {nyf(e['t'])}：{what}")
+    return "\n".join(lines)
+
+
+def ai_suggestions(context):
+    """Returns (lines, note). Never raises; empty lines means fall back to the list only."""
+    if os.environ.get("PLAN_AI", "1") == "0":
+        return [], ""
+    model = os.environ.get("MODEL") or "openai/gpt-4.1-mini"
+    try:
+        body = {"model": model, "temperature": 0.2,
+                "messages": [{"role": "user", "content": AI_PROMPT + context}]}
+        req = urllib.request.Request(
+            "https://models.github.ai/inference/chat/completions",
+            data=json.dumps(body).encode(),
+            headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=90) as r:
+            text = json.load(r)["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(f"warn: AI suggestion failed: {e}", file=sys.stderr)
+        return [], "AI 建议生成失败，今天只有下面的清单"
+    allowed = {int(x) for x in re.findall(r"^\[[^\]]+\] #(\d+)", context, re.M)}
+    keep, dropped = [], 0
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s.startswith(("-", "*", "•")):
+            continue
+        nums = {int(x) for x in re.findall(r"(?<![0-9A-Za-z_])#(\d+)", s)}  # skip e.g. CTS#2
+        if not nums or not nums <= allowed:     # cites nothing, or an issue not in today's list
+            dropped += 1
+            continue
+        keep.append("- " + s.lstrip("-*• ").strip())
+    note = f"{model} 生成，仅供参考；每条只引用下方清单中的 issue"
+    if dropped:
+        note += f"；已剔除 {dropped} 条无法对应清单的建议"
+    return keep[:5], note
+
+
+def render_plan(now, by, pm, fields, overnight, since, ai=([], "")):
     out = [f"# 今日计划 {day_title(now)}", "",
            f"- 生成：纽约 {nyf(now, '%H:%M')}；状态来源："
            + ("Project「Status」字段" if fields is not None else "未配置 Project，按最近更新排序"), ""]
+
+    ai_lines, ai_note = ai
+    if ai_lines or ai_note:
+        out += ["## 今日建议（AI）", ""]
+        out += ai_lines or ["- （无）"]
+        out += ["", f"> {ai_note}", ""]
 
     def line(i):
         pri = (fields or {}).get(i["number"], (None, None))[1]
@@ -345,17 +447,14 @@ def render_plan(now, issues, pm, fields, overnight, since):
 
     stale_cut = now - dt.timedelta(days=STALE_DAYS)
     if fields is not None:
-        by = {}
-        for i in open_issues:
-            by.setdefault(bucket(fields.get(i["number"], (None, None))[0]), []).append(i)
         section("进行中（In Progress）", by.get("prog", []))
         section("待办（Todo）", by.get("todo", []))
         section("阻塞（Blocked）", by.get("block", []))
         stale = [i for i in by.get("prog", []) + by.get("todo", []) if ts(i["updated_at"]) < stale_cut]
         backlog_n, other_n = len(by.get("backlog", [])), len(by.get("other", []))
     else:
-        section("Open issue（按最近更新）", open_issues)
-        stale = [i for i in open_issues if ts(i["updated_at"]) < stale_cut]
+        section("Open issue（按最近更新）", by.get("all", []))
+        stale = [i for i in by.get("all", []) if ts(i["updated_at"]) < stale_cut]
         backlog_n = other_n = 0
 
     out += [f"## 上次日志之后的新动态（纽约 {nyf(since, '%m-%d %H:%M')} 起）", ""]
@@ -390,7 +489,11 @@ def cmd_plan(a):
     except Exception as e:  # keep producing a plan even if the project query fails
         print(f"warn: project query failed, falling back: {e}", file=sys.stderr)
         fields = None
-    md = render_plan(now, issues, parent_map(issues), fields, activity(since, now, issues), since)
+    pm = parent_map(issues)
+    by = plan_buckets(issues, fields)
+    overnight = activity(since, now, issues)
+    ai = ai_suggestions(plan_context(by, fields, pm, now, overnight))
+    md = render_plan(now, by, pm, fields, overnight, since, ai)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(md, encoding="utf-8")
     summary(md)
