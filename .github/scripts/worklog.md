@@ -18,6 +18,14 @@
 
 ## 计划（08:00）
 
+顶部是 **3–5 条 AI 建议**（GitHub Models，默认 `openai/gpt-4.1-mini`，用 `GITHUB_TOKEN` 调用，无需额外 key）：
+- AI 读取清单中每项最近 3 条评论，推断下一步动作，每条注明依据的是哪条记录；
+- 引用了清单之外 issue 编号的建议会被自动剔除，并在下方注明剔除条数；
+- 模型调用失败时照常生成计划，只是没有建议部分；
+- 关闭：在 **Settings → Secrets and variables → Actions → Variables** 添加 `PLAN_AI=0`；换模型：添加 `MODEL`。
+
+下面是代码生成的完整清单（不经过 AI）：
+
 - 按 Project 的 Status 字段列出 **In Progress / Todo / Blocked**，每项附上一条最近的评论，方便接上昨天的进度。
 - 列出上次日志之后（前一天 18:00 后）的新动态。
 - 列出超过 7 天没有更新的 In Progress / Todo 项。
