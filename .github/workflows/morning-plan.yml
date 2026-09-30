@@ -1,6 +1,6 @@
 name: Morning plan
 
-# 工作日纽约 08:00 生成当天计划：代码生成完整清单，顶部附 3–5 条 AI 建议（GitHub Models）。
+# 工作日纽约 08:00 生成当天计划，全部由代码生成，不调用 AI。
 # 12:03 / 13:03 UTC 分别对应 EDT / EST 的 08:03。
 on:
   schedule:
@@ -16,7 +16,6 @@ on:
 permissions:
   contents: write
   issues: read
-  models: read      # 用 GITHUB_TOKEN 调用 GitHub Models 生成建议
 
 concurrency:
   group: worklog
@@ -36,9 +35,6 @@ jobs:
           # 未配置时自动退化为按最近更新列出所有 open issue。
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
-          # AI 建议：可选 variable PLAN_AI=0 关闭；MODEL 指定模型
-          PLAN_AI: ${{ vars.PLAN_AI || '1' }}
-          MODEL: ${{ vars.MODEL || 'openai/gpt-4.1-mini' }}
         run: python3 .github/scripts/worklog.py plan --at-hour 8 ${{ inputs.force && '--force' || '' }}
 
       - name: Commit
