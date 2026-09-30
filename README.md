@@ -8,7 +8,7 @@
 
 ## 每日记录与计划
 
-全部由代码自动生成，不调用 AI（纽约时间）：工作日 07:15 左右计划 → [plans/](plans/)，18:15 左右当天记录 → [logs/](logs/)；周五 18:20 左右周报 → [reports/](reports/)。详细说明见 [.github/scripts/worklog.md](.github/scripts/worklog.md)，日常用法见 [help.md](help.md)。
+全部由代码自动生成，不调用 AI（纽约时间）：工作日凌晨 03:15 左右计划 → [plans/](plans/)，18:15 左右当天记录 → [logs/](logs/)；周五 18:20 左右周报 → [reports/](reports/)。详细说明见 [.github/scripts/worklog.md](.github/scripts/worklog.md)，日常用法见 [help.md](help.md)。
 
 ---
 
@@ -19,7 +19,7 @@
 | 组件 | 触发 | 做什么 | 是否用 AI |
 |---|---|---|---|
 | `workflows/daily-log.yml` + `scripts/worklog.py log` | 工作日 18:17 起 | 抓取上次日志以来所有 issue 评论和新建/关闭/重开事件，按父 issue 分组，写入 `logs/YYYY/日期.md` | 否 |
-| `workflows/morning-plan.yml` + `scripts/worklog.py plan` | 工作日 07:17 起 | 按看板 Status 列出进行中/待办/阻塞，附最近记录、隔夜动态、7 天未动项，写入 `plans/YYYY/日期.md` | 否 |
+| `workflows/morning-plan.yml` + `scripts/worklog.py plan` | 工作日 03:17 起 | 按看板 Status 列出进行中/待办/阻塞，附最近记录、隔夜动态、7 天未动项，写入 `plans/YYYY/日期.md` | 否 |
 | `workflows/weekly-summary.yml` + `scripts/worklog.py week` + `scripts/weekly_report.py` | 周五 18:20 起 | 周报：各工作线概况表、本周关闭/新建、7 天未动项、按工作线分组的全部评论，写入 `reports/YYYY/YYYY-Www.md`；另画每日活跃度和每周精力分布图 | 否 |
 
 `worklog.py` 只用 Python 标准库；画图的 `weekly_report.py` 需要 matplotlib（workflow 中自动安装）。

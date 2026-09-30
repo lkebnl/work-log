@@ -4,7 +4,7 @@
 
 | 时间（纽约） | workflow | 输出 |
 |---|---|---|
-| 工作日 07:17 起 | `morning-plan.yml` | `plans/YYYY/YYYY-MM-DD.md` |
+| 工作日凌晨 03:17 起 | `morning-plan.yml` | `plans/YYYY/YYYY-MM-DD.md` |
 | 工作日 18:17 起 | `daily-log.yml` | `logs/YYYY/YYYY-MM-DD.md` |
 | 周五 18:20 起 | `weekly-summary.yml` | `reports/YYYY/YYYY-Www.md` + `charts/` 两张图 |
 
@@ -17,7 +17,7 @@
 - issue 正文不收录。
 - 末尾列出本窗口无更新的 open issue。
 
-## 计划（07:17 起）
+## 计划（凌晨 03:17 起）
 
 - 按 Project 的 Status 字段列出 **In Progress / Todo / Blocked**，每项附上一条最近的评论，方便接上昨天的进度。
 - 列出上次日志之后（前一天 18:00 后）的新动态。
