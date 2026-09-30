@@ -48,6 +48,7 @@ T = {
         "raw": "This week's raw log", "none": "none",
         "empty": "_No new log entries this week._", "demo": "_(Demo mode, model not called.)_",
         "fail": "_Summary generation failed: {e}_",
+        "noai": "_Charts and this week's raw log below. For a written summary, paste the raw log into your AI assistant._",
         "prompt": ("Below are my daily progress notes from this week, grouped by workstream "
                    "(sub-issues are rolled up into their parent workstream). Some notes are in Chinese. "
                    "Write a concise weekly report in English for my supervisor: for each workstream give "
@@ -65,6 +66,7 @@ T = {
         "raw": "本周原始日志", "none": "无",
         "empty": "_本周没有新的日志。_", "demo": "_（测试模式，未调用模型）_",
         "fail": "_周报生成失败：{e}_",
+        "noai": "_图表和本周原始日志见下方；需要文字周报时，把原始日志贴给 AI 整理。_",
         "prompt": ("下面是我这一周在各工作线下记录的每日进展（sub-issue 已归入所属工作线）。"
                    "请整理成简洁的中文周报：每条工作线 2-4 个要点，写清完成了什么、结果/数据、下一步。"
                    "不要编造日志中没有的内容，保留板号、编号等原始信息。最后列出跨工作线的风险或待办。\n\n"),
@@ -271,21 +273,14 @@ def main():
     for s in sorted(streams, key=lambda s: -wk.get(s, 0)):
         table += f"| {labels[s]} | {wk.get(s, 0)} | {sum(counts[w].get(s, 0) for w in weeks)} |\n"
 
-    if not groups:
-        text = T["empty"]
-    elif DEMO or not TOKEN:
-        text = T["demo"]
-    else:
-        try:
-            text = summarize(log)
-        except Exception as e:  # 模型调用失败时仍然发布图表和原始日志
-            text = T["fail"].format(e=e)
+    # GitHub Models 已于 2026-07-30 停止服务，周报不再调用 AI；原始日志直接展开，需要时贴给 AI 整理。
+    text = T["empty"] if not groups else T["noai"]
 
-    raw = f"https://raw.githubusercontent.com/{REPO}/HEAD/charts"
+    raw = f"https://github.com/{REPO}/raw/HEAD/charts"   # 私有仓库也能在 issue 里显示（需登录且有权限）
     with open("summary.md", "w") as f:
         f.write(f"{text}\n\n## {T['h_day']}\n\n![{T['h_day']}]({raw}/daily-{stamp}.png)\n\n"
                 f"## {T['h_chart']}\n\n![{T['alt']}]({raw}/effort-{stamp}.png)\n\n{table}\n"
-                f"<details><summary>{T['raw']}</summary>\n\n{log or T['none']}\n\n</details>\n")
+                f"<details open><summary>{T['raw']}</summary>\n\n{log or T['none']}\n\n</details>\n")
     print(f"weeks={len(weeks)} streams={len(streams)} comments={len(comments)} this_week={sum(wk.values())}")
 
 

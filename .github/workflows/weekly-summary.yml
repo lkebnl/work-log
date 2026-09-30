@@ -25,13 +25,12 @@ on:
 permissions:
   contents: write   # 把图表提交到 charts/
   issues: write
-  models: read      # 用 GITHUB_TOKEN 调用 GitHub Models
 
 jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install chart dependencies
         run: |

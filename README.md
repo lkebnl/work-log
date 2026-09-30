@@ -20,7 +20,7 @@
 |---|---|---|---|
 | `workflows/daily-log.yml` + `scripts/worklog.py log` | 工作日 18:00 | 抓取上次日志以来所有 issue 评论和新建/关闭/重开事件，按父 issue 分组，写入 `logs/YYYY/日期.md` | 否 |
 | `workflows/morning-plan.yml` + `scripts/worklog.py plan` | 工作日 08:00 | 按看板 Status 列出进行中/待办/阻塞，附最近记录、隔夜动态、7 天未动项；顶部 3–5 条 AI 建议 | 仅建议部分 |
-| `workflows/weekly-summary.yml` + `scripts/weekly_report.py` | 每周五 | 周报 issue + 精力分布图 | 是（周报文字） |
+| `workflows/weekly-summary.yml` + `scripts/weekly_report.py` | 每周五 | 周报 issue：精力分布图、计数表、按工作线分组的原始日志 | 否 |
 
 脚本只用 Python 标准库，不需要安装依赖。
 
