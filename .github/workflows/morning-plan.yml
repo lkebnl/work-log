@@ -1,11 +1,11 @@
 name: Morning plan
 
-# 工作日纽约 08:00 生成当天计划，全部由代码生成，不调用 AI。
-# 12:03 / 13:03 UTC 分别对应 EDT / EST 的 08:03。
+# 工作日纽约凌晨 03:00 起生成当天计划（夜里没有新记录，且凌晨 GitHub 负载低），全部由代码生成，不调用 AI。
+# GitHub 定时任务常延迟甚至被丢弃，所以每 30 分钟重试一次：第一次成功后，后续运行发现当天文件已存在即跳过。
+# UTC 07–11 点的 :17 / :47 → EDT 03:17–07:47，EST 02:17–06:47（03:00 前的由脚本跳过）。
 on:
   schedule:
-    - cron: "3 12 * * 1-5"
-    - cron: "3 13 * * 1-5"
+    - cron: "17,47 7,8,9,10,11 * * 1-5"
   workflow_dispatch:
     inputs:
       force:
@@ -35,7 +35,7 @@ jobs:
           # 未配置时自动退化为按最近更新列出所有 open issue。
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
-        run: python3 .github/scripts/worklog.py plan --at-hour 8 ${{ inputs.force && '--force' || '' }}
+        run: python3 .github/scripts/worklog.py plan --at-hour 3 ${{ inputs.force && '--force' || '' }}
 
       - name: Commit
         run: |
