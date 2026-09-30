@@ -341,22 +341,27 @@ def plan_buckets(issues, fields):
 
 
 # ---------------------------------------------------------------- AI suggestions
-AI_PROMPT = """你是一位实验室工程师的助理。下面是他今天的工作清单（来自 GitHub issue 与项目看板），每项附最近几条工作记录。请写"今日建议"。
+AI_PROMPT = """你是一位实验室工程师的助理。下面是他今天的工作清单（来自 GitHub issue 与项目看板），每项附最近的工作记录。请写"今日建议"。
 
 规则：
-1. 3–5 条，按建议的执行先后排列。每条一行，格式：
+1. 3–5 条，按建议的执行先后排列。每条一行，必须以清单中的 issue 编号开头，格式：
    - #编号 具体的下一步动作（依据：MM-DD HH:MM 记录）
+   多项合并时：- #编号 #编号 动作（依据：…）
 2. 只能引用清单中出现的 issue 编号；不得新增任务，不得编造清单中没有的事实、结果、数值或人名。
 3. 下一步动作要从记录内容推出；记录不足以判断时，写"确认当前进展并补充记录"。
 4. 优先考虑：进行中且最近有进展的项、可以解除阻塞的动作、超过 7 天未更新的项、P0。
-5. 可以一起做的事（同一设备、同一地点、同一人）合并为一条，列出多个编号。
+5. 可以一起做的事（同一设备、同一地点、同一人）合并为一条。
 6. 只输出列表，不要开头语和结尾语。用中文；板号、设备名、英文术语保留原文。
 
 清单：
 """
 
+# GitHub Models free tier caps input at ~8k tokens for gpt-4.1-mini.
+# Try a fuller context first, then shrink if the request is rejected as too large.
+AI_BUDGETS = ((2, 200, 9000), (1, 120, 5000))   # (comments per item, chars per comment, total chars)
 
-def plan_context(by, fields, pm, now, overnight):
+
+def plan_context(by, fields, pm, now, overnight, per_item=2, chars=200, limit=9000):
     labels = {"prog": "In Progress", "todo": "Todo", "block": "Blocked", "all": "Open"}
     lines = [f"今天：{day_title(now)}"]
     for key, label in labels.items():
@@ -367,45 +372,75 @@ def plan_context(by, fields, pm, now, overnight):
             parent = f"；工作线：{pt} #{pn}" if pn != n else ""
             lines.append(f"\n[{label}] #{n} {i['title']}" + (f"（{pri}）" if pri else "")
                          + f"{parent}；最后更新 {nyf(ts(i['updated_at']), '%m-%d')}")
-            for c in comments_of(n)[-3:]:
-                lines.append(f"  - {nyf(ts(c['created_at']))}：{snippet(c.get('body'), 300)}")
+            for c in comments_of(n)[-per_item:]:
+                lines.append(f"  - {nyf(ts(c['created_at']))}：{snippet(c.get('body'), chars)}")
     if overnight:
         lines.append("\n[昨晚 18:00 之后的新动态]")
         for i, es in overnight:
             for e in es:
-                what = snippet(e["text"], 200) if e["kind"] == "comment" else f"状态：{e['text']}"
+                what = snippet(e["text"], chars) if e["kind"] == "comment" else f"状态：{e['text']}"
                 lines.append(f"  - #{i['number']} {nyf(e['t'])}：{what}")
-    return "\n".join(lines)
+    text = "\n".join(lines)
+    return text if len(text) <= limit else text[:limit] + "\n…（已截断）"
 
 
-def ai_suggestions(context):
-    """Returns (lines, note). Never raises; empty lines means fall back to the list only."""
+def _call_model(model, prompt):
+    body = {"model": model, "temperature": 0.2, "messages": [{"role": "user", "content": prompt}]}
+    req = urllib.request.Request(
+        "https://models.github.ai/inference/chat/completions",
+        data=json.dumps(body).encode(),
+        headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=90) as r:
+        return json.load(r)["choices"][0]["message"]["content"]
+
+
+def _leading_refs(line):
+    """Issue numbers at the start of a suggestion ('#27 #14 do X ...' -> {27, 14}).
+    Later '#' numbers (board IDs like #60, CTS#2) are content, not issue refs."""
+    m = re.match(r"((?:#\d+[\s,，、/&和]*)+)", line)
+    return {int(x) for x in re.findall(r"#(\d+)", m.group(1))} if m else set()
+
+
+def ai_suggestions(contexts):
+    """contexts: prompt contexts from fullest to shortest.
+    Returns (lines, note). Never raises; empty lines means the list alone."""
     if os.environ.get("PLAN_AI", "1") == "0":
         return [], ""
     model = os.environ.get("MODEL") or "openai/gpt-4.1-mini"
-    try:
-        body = {"model": model, "temperature": 0.2,
-                "messages": [{"role": "user", "content": AI_PROMPT + context}]}
-        req = urllib.request.Request(
-            "https://models.github.ai/inference/chat/completions",
-            data=json.dumps(body).encode(),
-            headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=90) as r:
-            text = json.load(r)["choices"][0]["message"]["content"]
-    except Exception as e:
-        print(f"warn: AI suggestion failed: {e}", file=sys.stderr)
-        return [], "AI 建议生成失败，今天只有下面的清单"
+    text, reason, context = None, "", contexts[0]
+    for context in contexts:
+        try:
+            text = _call_model(model, AI_PROMPT + context)
+            break
+        except urllib.error.HTTPError as e:
+            detail = ""
+            try:
+                detail = e.read().decode("utf-8", "replace")[:400]
+            except Exception:
+                pass
+            print(f"warn: AI HTTP {e.code} (context {len(context)} chars): {detail}", file=sys.stderr)
+            reason = f"HTTP {e.code}"
+            too_big = e.code == 413 or "token" in detail.lower() or "too large" in detail.lower()
+            if not too_big:
+                break                       # auth / quota / model errors: retrying smaller won't help
+        except Exception as e:
+            print(f"warn: AI call failed: {e}", file=sys.stderr)
+            reason = type(e).__name__
+            break
+    if text is None:
+        return [], f"AI 建议生成失败（{reason}），今天只有下面的清单；详细原因见 Actions 日志"
     allowed = {int(x) for x in re.findall(r"^\[[^\]]+\] #(\d+)", context, re.M)}
     keep, dropped = [], 0
     for ln in text.splitlines():
         s = ln.strip()
         if not s.startswith(("-", "*", "•")):
             continue
-        nums = {int(x) for x in re.findall(r"(?<![0-9A-Za-z_])#(\d+)", s)}  # skip e.g. CTS#2
-        if not nums or not nums <= allowed:     # cites nothing, or an issue not in today's list
+        s = s.lstrip("-*• ").strip()
+        refs = _leading_refs(s)
+        if not refs or not refs <= allowed:     # doesn't start with an issue, or cites one not in the list
             dropped += 1
             continue
-        keep.append("- " + s.lstrip("-*• ").strip())
+        keep.append("- " + s)
     note = f"{model} 生成，仅供参考；每条只引用下方清单中的 issue"
     if dropped:
         note += f"；已剔除 {dropped} 条无法对应清单的建议"
@@ -492,7 +527,7 @@ def cmd_plan(a):
     pm = parent_map(issues)
     by = plan_buckets(issues, fields)
     overnight = activity(since, now, issues)
-    ai = ai_suggestions(plan_context(by, fields, pm, now, overnight))
+    ai = ai_suggestions([plan_context(by, fields, pm, now, overnight, *b) for b in AI_BUDGETS])
     md = render_plan(now, by, pm, fields, overnight, since, ai)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(md, encoding="utf-8")
