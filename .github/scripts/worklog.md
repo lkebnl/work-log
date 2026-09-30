@@ -18,11 +18,20 @@
 
 ## 计划（08:00）
 
-顶部是 **3–5 条 AI 建议**（GitHub Models，默认 `openai/gpt-4.1-mini`，用 `GITHUB_TOKEN` 调用，无需额外 key）：
+顶部是 **3–5 条 AI 建议**。AI 来源按配置的 secret 自动选择，都没配时只生成清单：
+
+| Secret | 后端 | 说明 |
+|---|---|---|
+| `COPILOT_GITHUB_TOKEN`（优先） | Copilot CLI | fine-grained PAT，**Account permissions → Copilot Requests: Read-only**；需个人 Copilot 订阅，每天一次调用，消耗少量 Copilot 额度。classic PAT 不支持。 |
+| `ANTHROPIC_API_KEY` | Claude API | 默认 `claude-haiku-4-5-20251001`，每天费用约一美分以内 |
+
+GitHub Models 已于 2026-07-30 停止服务（`models.github.ai` 只返回 `OK`），不要再用。
+
+建议的生成规则：
 - AI 读取清单中每项最近 3 条评论，推断下一步动作，每条注明依据的是哪条记录；
 - 引用了清单之外 issue 编号的建议会被自动剔除，并在下方注明剔除条数；
 - 模型调用失败时照常生成计划，只是没有建议部分；
-- 关闭：在 **Settings → Secrets and variables → Actions → Variables** 添加 `PLAN_AI=0`；换模型：添加 `MODEL`。
+- 关闭：在 **Settings → Secrets and variables → Actions → Variables** 添加 `PLAN_AI=0`；换模型：添加 `COPILOT_MODEL` 或 `CLAUDE_MODEL`。
 
 下面是代码生成的完整清单（不经过 AI）：
 

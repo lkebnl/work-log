@@ -45,7 +45,8 @@
 1. 复制 `.github/scripts/worklog.py`、`.github/workflows/daily-log.yml`、`.github/workflows/morning-plan.yml`。
 2. **Settings → Actions → General → Workflow permissions** 选 *Read and write*。
 3. 可选：Secret `PROJECT_TOKEN`（classic PAT，`read:project`）+ Variable `PROJECT_NUMBER`，计划按看板 Status 分组；不配则按最近更新列出 open issue。
-4. 可选：Variable `PLAN_AI=0` 关闭 AI 建议，`MODEL` 换模型（默认 `openai/gpt-4.1-mini`，经 GitHub Models 用 `GITHUB_TOKEN` 调用）。
+4. 可选 AI 建议（二选一，都不配则计划只有清单）：Secret `COPILOT_GITHUB_TOKEN`（fine-grained PAT，账户权限 *Copilot Requests*，需个人 Copilot 订阅，消耗 Copilot 额度），或 Secret `ANTHROPIC_API_KEY`（Claude API，默认 Haiku 4.5）。Variable `PLAN_AI=0` 可关闭。
+   注意：GitHub Models 已于 2026-07-30 停止服务，不要再用。
 5. 时区或时间点不同：改脚本中的 `NY` 时区，以及 workflow 里的两个 cron 和 `--at-hour`。
 6. Actions 页面手动 *Run workflow*（勾选 force）验证一次。
 

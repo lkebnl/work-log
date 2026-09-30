@@ -1,6 +1,7 @@
 name: Morning plan
 
-# 工作日纽约 08:00 生成当天计划：代码生成完整清单，顶部附 3–5 条 AI 建议（GitHub Models）。
+# 工作日纽约 08:00 生成当天计划：代码生成完整清单，顶部附 3–5 条 AI 建议。
+# AI 来源按 secret 自动选择：COPILOT_GITHUB_TOKEN（Copilot CLI）> ANTHROPIC_API_KEY（Claude）> 无（只出清单）。
 # 12:03 / 13:03 UTC 分别对应 EDT / EST 的 08:03。
 on:
   schedule:
@@ -16,7 +17,6 @@ on:
 permissions:
   contents: write
   issues: read
-  models: read      # 用 GITHUB_TOKEN 调用 GitHub Models 生成建议
 
 concurrency:
   group: worklog
@@ -25,8 +25,19 @@ concurrency:
 jobs:
   plan:
     runs-on: ubuntu-latest
+    env:
+      HAS_COPILOT: ${{ secrets.COPILOT_GITHUB_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        if: env.HAS_COPILOT == 'true'
+        with:
+          node-version: 22
+
+      - name: Install Copilot CLI
+        if: env.HAS_COPILOT == 'true'
+        run: npm install -g @github/copilot
 
       - name: Build today's plan
         env:
@@ -36,9 +47,15 @@ jobs:
           # 未配置时自动退化为按最近更新列出所有 open issue。
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
-          # AI 建议：可选 variable PLAN_AI=0 关闭；MODEL 指定模型
+          # AI 建议（可选，二选一）：
+          #   COPILOT_GITHUB_TOKEN = fine-grained PAT，账户权限勾选 "Copilot Requests"（消耗个人 Copilot 额度）
+          #   ANTHROPIC_API_KEY    = Claude API key
+          # variable PLAN_AI=0 关闭；COPILOT_MODEL / CLAUDE_MODEL 可指定模型
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PLAN_AI: ${{ vars.PLAN_AI || '1' }}
-          MODEL: ${{ vars.MODEL || 'openai/gpt-4.1-mini' }}
+          COPILOT_MODEL: ${{ vars.COPILOT_MODEL }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
         run: python3 .github/scripts/worklog.py plan --at-hour 8 ${{ inputs.force && '--force' || '' }}
 
       - name: Commit

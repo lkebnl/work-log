@@ -11,7 +11,7 @@ log  : rolling window from the end of the previous log to now. Collects every
 plan : today's plan. Deterministic list from the Project "Status" field
        (In Progress / Todo / Blocked) with each item's latest comment, activity
        since the last log and stale items, plus 3-5 AI suggestions on top
-       (GitHub Models; suggestions citing issues outside the list are dropped;
+       (Copilot CLI or Claude API; suggestions citing issues outside the list are dropped;
        falls back to the list alone if the model call fails).
        Output: plans/YYYY/YYYY-MM-DD.md.
 
@@ -21,7 +21,10 @@ Environment:
   PROJECT_TOKEN    optional, classic PAT with read:project (needed for Status)
   PROJECT_OWNER    optional, project owner login, default = REPO owner
   PROJECT_NUMBER   optional, the N in .../projects/N
-  MODEL            optional, GitHub Models name, default openai/gpt-4.1-mini
+  COPILOT_GITHUB_TOKEN optional, fine-grained PAT with "Copilot Requests";
+                   AI suggestions via Copilot CLI (checked first)
+  ANTHROPIC_API_KEY    optional, AI suggestions via Claude API
+  COPILOT_MODEL / CLAUDE_MODEL  optional model overrides
   PLAN_AI          optional, set to 0 to disable AI suggestions
 """
 from __future__ import annotations
@@ -356,8 +359,7 @@ AI_PROMPT = """你是一位实验室工程师的助理。下面是他今天的�
 清单：
 """
 
-# GitHub Models free tier caps input at ~8k tokens for gpt-4.1-mini.
-# Try a fuller context first, then shrink if the request is rejected as too large.
+# Keep the prompt small (fast, cheap); shrink once more if a backend rejects it as too long.
 AI_BUDGETS = ((2, 200, 9000), (1, 120, 5000))   # (comments per item, chars per comment, total chars)
 
 
@@ -384,22 +386,40 @@ def plan_context(by, fields, pm, now, overnight, per_item=2, chars=200, limit=90
     return text if len(text) <= limit else text[:limit] + "\n…（已截断）"
 
 
-def _call_model(model, prompt):
-    body = {"model": model, "temperature": 0.2, "messages": [{"role": "user", "content": prompt}]}
+def _backend():
+    """Which AI to use for plan suggestions, by which secret is configured."""
+    if os.environ.get("COPILOT_GITHUB_TOKEN"):
+        return "copilot"
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return "claude"
+    return None
+
+
+def _call_copilot(prompt):
+    """GitHub Copilot CLI in prompt mode. Needs `npm i -g @github/copilot` and a
+    fine-grained PAT with the 'Copilot Requests' permission in COPILOT_GITHUB_TOKEN."""
+    import subprocess
+    env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_TOKEN", "GH_TOKEN")}
+    cmd = ["copilot", "-p", prompt + "\n\n不要调用任何工具，直接输出列表。", "-s"]
+    if os.environ.get("COPILOT_MODEL"):
+        cmd += ["--model", os.environ["COPILOT_MODEL"]]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
+    if r.returncode != 0:
+        raise RuntimeError(f"copilot exit {r.returncode}: {(r.stderr or r.stdout)[:400]}")
+    return r.stdout
+
+
+def _call_claude(prompt):
+    model = os.environ.get("CLAUDE_MODEL") or "claude-haiku-4-5-20251001"
+    body = {"model": model, "max_tokens": 1000, "temperature": 0.2,
+            "messages": [{"role": "user", "content": prompt}]}
     req = urllib.request.Request(
-        "https://models.github.ai/inference/chat/completions",
-        data=json.dumps(body).encode(),
-        headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"})
+        "https://api.anthropic.com/v1/messages", data=json.dumps(body).encode(),
+        headers={"x-api-key": os.environ["ANTHROPIC_API_KEY"], "anthropic-version": "2023-06-01",
+                 "content-type": "application/json"})
     with urllib.request.urlopen(req, timeout=90) as r:
-        raw = r.read()
-        status, ctype, final_url = r.status, r.headers.get("Content-Type", ""), r.geturl()
-    try:
-        return json.loads(raw)["choices"][0]["message"]["content"]
-    except (ValueError, KeyError, IndexError, TypeError):
-        # Not a chat completion: show what came back instead (redirect, HTML page, error object...)
-        print(f"warn: AI non-JSON/unexpected response: status={status} type={ctype!r} "
-              f"url={final_url} body[:300]={raw[:300].decode('utf-8', 'replace')!r}", file=sys.stderr)
-        raise
+        data = json.load(r)
+    return "".join(b.get("text", "") for b in data.get("content", []))
 
 
 def _leading_refs(line):
@@ -412,13 +432,18 @@ def _leading_refs(line):
 def ai_suggestions(contexts):
     """contexts: prompt contexts from fullest to shortest.
     Returns (lines, note). Never raises; empty lines means the list alone."""
-    if os.environ.get("PLAN_AI", "1") == "0":
+    backend = _backend()
+    if os.environ.get("PLAN_AI", "1") == "0" or backend is None:
+        if backend is None:
+            print("info: no AI configured (COPILOT_GITHUB_TOKEN / ANTHROPIC_API_KEY); list only")
         return [], ""
-    model = os.environ.get("MODEL") or "openai/gpt-4.1-mini"
+    call = _call_copilot if backend == "copilot" else _call_claude
+    label = ("Copilot CLI" + (f"（{os.environ['COPILOT_MODEL']}）" if os.environ.get("COPILOT_MODEL") else "")
+             if backend == "copilot" else os.environ.get("CLAUDE_MODEL") or "Claude Haiku 4.5")
     text, reason, context = None, "", contexts[0]
     for context in contexts:
         try:
-            text = _call_model(model, AI_PROMPT + context)
+            text = call(AI_PROMPT + context)
             break
         except urllib.error.HTTPError as e:
             detail = ""
@@ -428,15 +453,15 @@ def ai_suggestions(contexts):
                 pass
             print(f"warn: AI HTTP {e.code} (context {len(context)} chars): {detail}", file=sys.stderr)
             reason = f"HTTP {e.code}"
-            too_big = e.code == 413 or "token" in detail.lower() or "too large" in detail.lower()
-            if not too_big:
+            if not (e.code == 413 or "too long" in detail.lower() or "too large" in detail.lower()):
                 break                       # auth / quota / model errors: retrying smaller won't help
         except Exception as e:
-            print(f"warn: AI call failed: {e}", file=sys.stderr)
+            print(f"warn: AI call failed ({backend}): {e}", file=sys.stderr)
             reason = type(e).__name__
-            break
+            if "too long" not in str(e).lower() and "token" not in str(e).lower():
+                break
     if text is None:
-        return [], f"AI 建议生成失败（{reason}），今天只有下面的清单；详细原因见 Actions 日志"
+        return [], f"AI 建议生成失败（{label}，{reason}），今天只有下面的清单；详细原因见 Actions 日志"
     allowed = {int(x) for x in re.findall(r"^\[[^\]]+\] #(\d+)", context, re.M)}
     keep, dropped = [], 0
     for ln in text.splitlines():
@@ -449,7 +474,7 @@ def ai_suggestions(contexts):
             dropped += 1
             continue
         keep.append("- " + s)
-    note = f"{model} 生成，仅供参考；每条只引用下方清单中的 issue"
+    note = f"{label} 生成，仅供参考；每条只引用下方清单中的 issue"
     if dropped:
         note += f"；已剔除 {dropped} 条无法对应清单的建议"
     return keep[:5], note
