@@ -391,7 +391,15 @@ def _call_model(model, prompt):
         data=json.dumps(body).encode(),
         headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=90) as r:
-        return json.load(r)["choices"][0]["message"]["content"]
+        raw = r.read()
+        status, ctype, final_url = r.status, r.headers.get("Content-Type", ""), r.geturl()
+    try:
+        return json.loads(raw)["choices"][0]["message"]["content"]
+    except (ValueError, KeyError, IndexError, TypeError):
+        # Not a chat completion: show what came back instead (redirect, HTML page, error object...)
+        print(f"warn: AI non-JSON/unexpected response: status={status} type={ctype!r} "
+              f"url={final_url} body[:300]={raw[:300].decode('utf-8', 'replace')!r}", file=sys.stderr)
+        raise
 
 
 def _leading_refs(line):
