@@ -1,11 +1,12 @@
 # 自动工作记录
 
-两个 GitHub Actions workflow，只用脚本抓取数据，不经过 AI：
+三个 GitHub Actions workflow，全部由脚本生成，不调用 AI：
 
-| 时间（纽约，工作日） | workflow | 输出 |
+| 时间（纽约） | workflow | 输出 |
 |---|---|---|
-| 08:00 | `morning-plan.yml` | `plans/YYYY/YYYY-MM-DD.md` |
-| 18:00 | `daily-log.yml` | `logs/YYYY/YYYY-MM-DD.md` |
+| 工作日 08:00 | `morning-plan.yml` | `plans/YYYY/YYYY-MM-DD.md` |
+| 工作日 18:00 | `daily-log.yml` | `logs/YYYY/YYYY-MM-DD.md` |
+| 周五 18:20 | `weekly-summary.yml` | `reports/YYYY/YYYY-Www.md` + `charts/` 两张图 |
 
 每次运行的结果也会显示在 Actions 页面对应 run 的 Summary 里，可以直接复制。
 
@@ -18,27 +19,17 @@
 
 ## 计划（08:00）
 
-顶部是 **3–5 条 AI 建议**。AI 来源按配置的 secret 自动选择，都没配时只生成清单：
-
-| Secret | 后端 | 说明 |
-|---|---|---|
-| `COPILOT_GITHUB_TOKEN`（优先） | Copilot CLI | fine-grained PAT，**Account permissions → Copilot Requests: Read-only**；需个人 Copilot 订阅，每天一次调用，消耗少量 Copilot 额度。classic PAT 不支持。 |
-| `ANTHROPIC_API_KEY` | Claude API | 默认 `claude-haiku-4-5-20251001`，每天费用约一美分以内 |
-
-GitHub Models 已于 2026-07-30 停止服务（`models.github.ai` 只返回 `OK`），不要再用。
-
-建议的生成规则：
-- AI 读取清单中每项最近 3 条评论，推断下一步动作，每条注明依据的是哪条记录；
-- 引用了清单之外 issue 编号的建议会被自动剔除，并在下方注明剔除条数；
-- 模型调用失败时照常生成计划，只是没有建议部分；
-- 关闭：在 **Settings → Secrets and variables → Actions → Variables** 添加 `PLAN_AI=0`；换模型：添加 `COPILOT_MODEL` 或 `CLAUDE_MODEL`。
-
-下面是代码生成的完整清单（不经过 AI）：
-
 - 按 Project 的 Status 字段列出 **In Progress / Todo / Blocked**，每项附上一条最近的评论，方便接上昨天的进度。
 - 列出上次日志之后（前一天 18:00 后）的新动态。
 - 列出超过 7 天没有更新的 In Progress / Todo 项。
 - Backlog 和没有设置状态的只统计数量，不展开。
+
+## 周报（周五 18:20）
+
+- **滚动窗口**：从上一份周报结束到本次运行（第一份从本周一 00:00 开始），状态同样保存在 `logs/.state.json`。
+- 内容：各工作线概况表（评论数、新建、关闭、有活动的 issue）→ 本周关闭 → 本周新建 → 超过 7 天无更新的 open issue → 按工作线分组的全部评论原文（带链接）。
+- 同时画每日活跃度图和每周精力分布图，周报里直接引用。
+- 手动补生成：Actions → *Weekly work-log summary* → Run workflow，勾选 force（不限星期）。
 
 ## 一次性设置
 

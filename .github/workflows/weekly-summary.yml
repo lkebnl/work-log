@@ -1,30 +1,33 @@
-# 放到 lkebnl/work-log 的 .github/workflows/weekly-summary.yml
-# 配套脚本：.github/scripts/weekly_report.py
-# 每周五 17:00（美东夏令时）：生成周报 + 每日活跃度图 + 每周精力分布图，新建一个 "Weekly report 日期" issue（默认英文，可切换中文）。
-# 也可在 Actions 页面手动运行。
 name: Weekly work-log summary
 
+# 每周五纽约 18:20 生成周报（在 18:07 的日志之后），全部由代码生成，不调用 AI：
+#   reports/YYYY/YYYY-Www.md  ← 本周概况表、关闭/新建、7 天未动项、按工作线分组的全部评论（带链接）
+#   charts/daily-<日期>.png、effort-<日期>.png（以及 *-latest.png）
+# cron 只认 UTC：22:20 / 23:20 UTC 分别对应 EDT / EST 的 18:20，脚本按纽约时间只执行一次。
 on:
   schedule:
-        - cron: '0 3 * * 6'    # UTC 03:00 周六 = EDT 周五 23:00（冬令时为 22:00）
+    - cron: "20 22 * * 5"
+    - cron: "20 23 * * 5"
   workflow_dispatch:
     inputs:
-      days:
-        description: '周报覆盖最近几天'
-        default: '7'
+      force:
+        description: "忽略星期、时间与重复检查，立即重新生成本周周报"
+        type: boolean
+        default: false
       weeks:
-        description: '精力分布图显示最近几周'
-        default: '8'
+        description: "精力分布图显示最近几周"
+        default: "8"
       daily_days:
-        description: '每日图显示最近几天'
-        default: '14'
-      lang:
-        description: '输出语言 en / zh'
-        default: 'en'
+        description: "每日图显示最近几天"
+        default: "14"
 
 permissions:
-  contents: write   # 把图表提交到 charts/
-  issues: write
+  contents: write
+  issues: read
+
+concurrency:
+  group: worklog
+  cancel-in-progress: false
 
 jobs:
   report:
@@ -32,33 +35,36 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Build weekly report
+        id: week
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: python3 .github/scripts/worklog.py week --at-hour 18 --charts ${{ inputs.force && '--force' || '' }}
+
       - name: Install chart dependencies
+        if: steps.week.outputs.wrote == 'true'
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
           pip install -q matplotlib
 
-      - name: Build report and chart
+      - name: Draw charts
+        if: steps.week.outputs.wrote == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          DAYS: ${{ inputs.days || '7' }}
           WEEKS: ${{ inputs.weeks || '8' }}
           DAILY_DAYS: ${{ inputs.daily_days || '14' }}
-          REPORT_LANG: ${{ inputs.lang || 'en' }}
+          REPORT_LANG: zh
         run: python3 .github/scripts/weekly_report.py
 
-      - name: Commit chart
+      - name: Commit
+        if: steps.week.outputs.wrote == 'true'
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add charts/
-          git diff --cached --quiet || git commit -m "chore: weekly effort chart $(date -u +%F)"
+          git add reports charts logs/.state.json
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          git commit -m "report: $(TZ=America/New_York date +%G-W%V)"
+          git pull --rebase --autostash
           git push
-
-      - name: Post summary issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPORT_LANG: ${{ inputs.lang || 'en' }}
-        run: |
-          if [ "$REPORT_LANG" = "zh" ]; then PREFIX="周报"; else PREFIX="Weekly report"; fi
-          gh issue create -R "${{ github.repository }}" --title "$PREFIX $(TZ=America/New_York date +%F)" --body-file summary.md

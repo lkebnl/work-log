@@ -4,16 +4,17 @@ work-log automation (standard library only).
 
   python3 .github/scripts/worklog.py log   [--at-hour 18] [--force] [--start ISO] [--end ISO]
   python3 .github/scripts/worklog.py plan  [--at-hour 8]  [--force]
+  python3 .github/scripts/worklog.py week  [--at-hour 18] [--force] [--start ISO]
 
 log  : rolling window from the end of the previous log to now. Collects every
        issue comment and open/close/reopen event, grouped by parent issue.
-       Output: logs/YYYY/YYYY-MM-DD.md. No AI involved; issue bodies are skipped.
-plan : today's plan. Deterministic list from the Project "Status" field
-       (In Progress / Todo / Blocked) with each item's latest comment, activity
-       since the last log and stale items, plus 3-5 AI suggestions on top
-       (Copilot CLI or Claude API; suggestions citing issues outside the list are dropped;
-       falls back to the list alone if the model call fails).
-       Output: plans/YYYY/YYYY-MM-DD.md.
+       Output: logs/YYYY/YYYY-MM-DD.md. No AI anywhere in this script; issue bodies are skipped.
+plan : today's plan from the Project "Status" field (In Progress / Todo /
+       Blocked), with each item's latest comment, activity since the last log,
+       and stale items. Output: plans/YYYY/YYYY-MM-DD.md.
+week : weekly report (Fridays). Rolling window since the previous report:
+       per-workstream counts, issues closed / opened, stale items, and every
+       comment grouped by parent issue. Output: reports/YYYY/YYYY-Www.md.
 
 Environment:
   GITHUB_TOKEN     required (provided automatically in Actions)
@@ -21,11 +22,6 @@ Environment:
   PROJECT_TOKEN    optional, classic PAT with read:project (needed for Status)
   PROJECT_OWNER    optional, project owner login, default = REPO owner
   PROJECT_NUMBER   optional, the N in .../projects/N
-  COPILOT_GITHUB_TOKEN optional, fine-grained PAT with "Copilot Requests";
-                   AI suggestions via Copilot CLI (checked first)
-  ANTHROPIC_API_KEY    optional, AI suggestions via Claude API
-  COPILOT_MODEL / CLAUDE_MODEL  optional model overrides
-  PLAN_AI          optional, set to 0 to disable AI suggestions
 """
 from __future__ import annotations
 
@@ -195,6 +191,36 @@ def group_key(issue, pm):
 
 
 # ---------------------------------------------------------------- log
+def render_groups(acts, pm, level=2):
+    """Activity grouped by parent issue (workstream), full comment text with links."""
+    out = []
+    h = "#" * level
+    groups = {}
+    for i, es in acts:
+        groups.setdefault(group_key(i, pm), []).append((i, es))
+
+    def last_t(items):
+        return max(e["t"] for _, es in items for e in es)
+
+    for (pn, ptitle), items in sorted(groups.items(), key=lambda kv: last_t(kv[1]), reverse=True):
+        out += [f"{h} {ptitle} #{pn}", ""]
+        items.sort(key=lambda it: (not any(e["text"].startswith("关闭") for e in it[1]),
+                                   -max(e["t"] for e in it[1]).timestamp()))
+        for i, es in items:
+            out.append(f"{h}# #{i['number']} {i['title']} · {i['state']}")
+            out.append("")
+            for e in es:
+                who = f" · {e['who']}" if e["who"] else ""
+                if e["kind"] == "comment":
+                    out.append(f"- **{nyf(e['t'])}**{who} · [评论]({e['url']})")
+                    out.append(quote(e["text"]))
+                else:
+                    out.append(f"- **{nyf(e['t'])}**{who} · 状态：{e['text']}")
+            out.append("")
+
+    return out
+
+
 def render_log(start, end, acts, issues, pm):
     n_comments = sum(1 for _, es in acts for e in es if e["kind"] == "comment")
     n_closed = sum(1 for _, es in acts if any(e["text"].startswith("关闭") for e in es))
@@ -208,28 +234,7 @@ def render_log(start, end, acts, issues, pm):
         "- 来源：脚本直接抓取 issue 评论与状态事件，未经 AI 处理；issue 正文不收录",
         "",
     ]
-    groups = {}
-    for i, es in acts:
-        groups.setdefault(group_key(i, pm), []).append((i, es))
-
-    def last_t(items):
-        return max(e["t"] for _, es in items for e in es)
-
-    for (pn, ptitle), items in sorted(groups.items(), key=lambda kv: last_t(kv[1]), reverse=True):
-        out += [f"## {ptitle} #{pn}", ""]
-        items.sort(key=lambda it: (not any(e["text"].startswith("关闭") for e in it[1]),
-                                   -max(e["t"] for e in it[1]).timestamp()))
-        for i, es in items:
-            out.append(f"### #{i['number']} {i['title']} · {i['state']}")
-            out.append("")
-            for e in es:
-                who = f" · {e['who']}" if e["who"] else ""
-                if e["kind"] == "comment":
-                    out.append(f"- **{nyf(e['t'])}**{who} · [评论]({e['url']})")
-                    out.append(quote(e["text"]))
-                else:
-                    out.append(f"- **{nyf(e['t'])}**{who} · 状态：{e['text']}")
-            out.append("")
+    out += render_groups(acts, pm)
 
     active = {i["number"] for i, _ in acts}
     idle = [i for i in issues if i["state"] == "open" and i["number"] not in active]
@@ -261,6 +266,96 @@ def cmd_log(a):
     if not (a.start or a.end):
         save_state({**st, "last_log_start": iso(start), "last_log_end": iso(now),
                     "last_log_date": today.isoformat()})
+    summary(md)
+    print(f"wrote {path}")
+    return 0
+
+
+# ---------------------------------------------------------------- week
+def render_week(start, end, acts, issues, pm, charts_stamp=None):
+    y, w, _ = end.astimezone(NY).isocalendar()
+    n_comments = sum(1 for _, es in acts for e in es if e["kind"] == "comment")
+    closed = [(i, e) for i, es in acts for e in es if e["text"].startswith("关闭")]
+    opened = [(i, e) for i, es in acts for e in es if e["text"] == "新建"]
+    out = [
+        f"# 周报 {y}-W{w:02d}（{nyf(start, '%m-%d')} – {nyf(end, '%m-%d')}）",
+        "",
+        f"- 窗口（纽约）：{nyf(start, '%Y-%m-%d %H:%M')} → {nyf(end, '%Y-%m-%d %H:%M')}",
+        f"- 有活动的 issue：{len(acts)}（新建 {len(opened)}，关闭 {len(closed)}）；评论：{n_comments}",
+        "- 来源：脚本直接抓取 issue 评论与状态事件，未经 AI 处理；issue 正文不收录",
+        "",
+    ]
+    if charts_stamp:
+        out += ["## 图表", "",
+                f"![每日活跃度](../../charts/daily-{charts_stamp}.png)", "",
+                f"![每周精力分布](../../charts/effort-{charts_stamp}.png)", ""]
+
+    # per-workstream table
+    rows = {}
+    for i, es in acts:
+        k = group_key(i, pm)
+        r = rows.setdefault(k, {"issues": set(), "c": 0, "new": 0, "closed": 0})
+        r["issues"].add(i["number"])
+        r["c"] += sum(1 for e in es if e["kind"] == "comment")
+        r["new"] += sum(1 for e in es if e["text"] == "新建")
+        r["closed"] += sum(1 for e in es if e["text"].startswith("关闭"))
+    out += ["## 各工作线概况", "", "| 工作线 | 评论 | 新建 | 关闭 | 有活动的 issue |", "|---|---:|---:|---:|---|"]
+    for (pn, pt), r in sorted(rows.items(), key=lambda kv: -kv[1]["c"]):
+        refs = " ".join(f"#{n}" for n in sorted(r["issues"]))
+        out.append(f"| {pt} #{pn} | {r['c']} | {r['new']} | {r['closed']} | {refs} |")
+    if not rows:
+        out.append("| （无） | 0 | 0 | 0 | |")
+    out.append("")
+
+    out += ["## 本周关闭", ""]
+    out += [f"- #{i['number']} {i['title']}（{nyf(e['t'], '%m-%d')}，{e['text']}）" for i, e in closed] or ["- （无）"]
+    out += ["", "## 本周新建", ""]
+    out += [f"- #{i['number']} {i['title']}（{nyf(e['t'], '%m-%d')}）" for i, e in opened] or ["- （无）"]
+    out.append("")
+
+    stale_cut = end - dt.timedelta(days=STALE_DAYS)
+    stale = [i for i in issues if i["state"] == "open" and ts(i["updated_at"]) < stale_cut]
+    out += [f"## 超过 {STALE_DAYS} 天无更新的 open issue", ""]
+    out += [f"- #{i['number']} {i['title']}（最后更新 {nyf(ts(i['updated_at']), '%m-%d')}）"
+            for i in sorted(stale, key=lambda x: x["updated_at"])] or ["- （无）"]
+    out += ["", "## 本周明细", ""]
+    out += render_groups(acts, pm, level=3) or ["- （无）", ""]
+    return "\n".join(out)
+
+
+def cmd_week(a):
+    now = dt.datetime.now(UTC)
+    local = now.astimezone(NY)
+    y, w, _ = local.isocalendar()
+    path = ROOT / "reports" / f"{y}" / f"{y}-W{w:02d}.md"
+    if not a.force and local.weekday() != 4:
+        print(f"skip: weekly report runs on Fridays (today {local:%a})")
+        return 0
+    if not guard(a, now, path):
+        return 0
+    st = load_state()
+    key = f"{y}-W{w:02d}"
+    if a.start:
+        start = ts(a.start)
+    elif st.get("last_week_key") == key and st.get("last_week_start"):
+        start = ts(st["last_week_start"])         # re-run this week: same window
+    elif st.get("last_week_end"):
+        start = ts(st["last_week_end"])           # rolling: continue from last report
+    else:
+        monday = local.date() - dt.timedelta(days=local.weekday())
+        start = dt.datetime.combine(monday, dt.time(0), NY)
+    issues = all_issues()
+    pm = parent_map(issues)
+    md = render_week(start, now, activity(start, now, issues), issues, pm,
+                     charts_stamp=local.date().isoformat() if a.charts else None)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(md, encoding="utf-8")
+    if not a.start:
+        save_state({**st, "last_week_start": iso(start), "last_week_end": iso(now), "last_week_key": key})
+    out = os.environ.get("GITHUB_OUTPUT")
+    if out:
+        with open(out, "a") as f:
+            f.write(f"wrote=true\npath={path}\n")
     summary(md)
     print(f"wrote {path}")
     return 0
@@ -343,153 +438,10 @@ def plan_buckets(issues, fields):
     return by
 
 
-# ---------------------------------------------------------------- AI suggestions
-AI_PROMPT = """你是一位实验室工程师的助理。下面是他今天的工作清单（来自 GitHub issue 与项目看板），每项附最近的工作记录。请写"今日建议"。
-
-规则：
-1. 3–5 条，按建议的执行先后排列。每条一行，必须以清单中的 issue 编号开头，格式：
-   - #编号 具体的下一步动作（依据：MM-DD HH:MM 记录）
-   多项合并时：- #编号 #编号 动作（依据：…）
-2. 只能引用清单中出现的 issue 编号；不得新增任务，不得编造清单中没有的事实、结果、数值或人名。
-3. 下一步动作要从记录内容推出；记录不足以判断时，写"确认当前进展并补充记录"。
-4. 优先考虑：进行中且最近有进展的项、可以解除阻塞的动作、超过 7 天未更新的项、P0。
-5. 可以一起做的事（同一设备、同一地点、同一人）合并为一条。
-6. 只输出列表，不要开头语和结尾语。用中文；板号、设备名、英文术语保留原文。
-
-清单：
-"""
-
-# Keep the prompt small (fast, cheap); shrink once more if a backend rejects it as too long.
-AI_BUDGETS = ((2, 200, 9000), (1, 120, 5000))   # (comments per item, chars per comment, total chars)
-
-
-def plan_context(by, fields, pm, now, overnight, per_item=2, chars=200, limit=9000):
-    labels = {"prog": "In Progress", "todo": "Todo", "block": "Blocked", "all": "Open"}
-    lines = [f"今天：{day_title(now)}"]
-    for key, label in labels.items():
-        for i in by.get(key, []):
-            n = i["number"]
-            pri = (fields or {}).get(n, (None, None))[1]
-            pn, pt = group_key(i, pm)
-            parent = f"；工作线：{pt} #{pn}" if pn != n else ""
-            lines.append(f"\n[{label}] #{n} {i['title']}" + (f"（{pri}）" if pri else "")
-                         + f"{parent}；最后更新 {nyf(ts(i['updated_at']), '%m-%d')}")
-            for c in comments_of(n)[-per_item:]:
-                lines.append(f"  - {nyf(ts(c['created_at']))}：{snippet(c.get('body'), chars)}")
-    if overnight:
-        lines.append("\n[昨晚 18:00 之后的新动态]")
-        for i, es in overnight:
-            for e in es:
-                what = snippet(e["text"], chars) if e["kind"] == "comment" else f"状态：{e['text']}"
-                lines.append(f"  - #{i['number']} {nyf(e['t'])}：{what}")
-    text = "\n".join(lines)
-    return text if len(text) <= limit else text[:limit] + "\n…（已截断）"
-
-
-def _backend():
-    """Which AI to use for plan suggestions, by which secret is configured."""
-    if os.environ.get("COPILOT_GITHUB_TOKEN"):
-        return "copilot"
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        return "claude"
-    return None
-
-
-def _call_copilot(prompt):
-    """GitHub Copilot CLI in prompt mode. Needs `npm i -g @github/copilot` and a
-    fine-grained PAT with the 'Copilot Requests' permission in COPILOT_GITHUB_TOKEN."""
-    import subprocess
-    env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_TOKEN", "GH_TOKEN")}
-    cmd = ["copilot", "-p", prompt + "\n\n不要调用任何工具，直接输出列表。", "-s"]
-    if os.environ.get("COPILOT_MODEL"):
-        cmd += ["--model", os.environ["COPILOT_MODEL"]]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
-    if r.returncode != 0:
-        raise RuntimeError(f"copilot exit {r.returncode}: {(r.stderr or r.stdout)[:400]}")
-    return r.stdout
-
-
-def _call_claude(prompt):
-    model = os.environ.get("CLAUDE_MODEL") or "claude-haiku-4-5-20251001"
-    body = {"model": model, "max_tokens": 1000, "temperature": 0.2,
-            "messages": [{"role": "user", "content": prompt}]}
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages", data=json.dumps(body).encode(),
-        headers={"x-api-key": os.environ["ANTHROPIC_API_KEY"], "anthropic-version": "2023-06-01",
-                 "content-type": "application/json"})
-    with urllib.request.urlopen(req, timeout=90) as r:
-        data = json.load(r)
-    return "".join(b.get("text", "") for b in data.get("content", []))
-
-
-def _leading_refs(line):
-    """Issue numbers at the start of a suggestion ('#27 #14 do X ...' -> {27, 14}).
-    Later '#' numbers (board IDs like #60, CTS#2) are content, not issue refs."""
-    m = re.match(r"((?:#\d+[\s,，、/&和]*)+)", line)
-    return {int(x) for x in re.findall(r"#(\d+)", m.group(1))} if m else set()
-
-
-def ai_suggestions(contexts):
-    """contexts: prompt contexts from fullest to shortest.
-    Returns (lines, note). Never raises; empty lines means the list alone."""
-    backend = _backend()
-    if os.environ.get("PLAN_AI", "1") == "0" or backend is None:
-        if backend is None:
-            print("info: no AI configured (COPILOT_GITHUB_TOKEN / ANTHROPIC_API_KEY); list only")
-        return [], ""
-    call = _call_copilot if backend == "copilot" else _call_claude
-    label = ("Copilot CLI" + (f"（{os.environ['COPILOT_MODEL']}）" if os.environ.get("COPILOT_MODEL") else "")
-             if backend == "copilot" else os.environ.get("CLAUDE_MODEL") or "Claude Haiku 4.5")
-    text, reason, context = None, "", contexts[0]
-    for context in contexts:
-        try:
-            text = call(AI_PROMPT + context)
-            break
-        except urllib.error.HTTPError as e:
-            detail = ""
-            try:
-                detail = e.read().decode("utf-8", "replace")[:400]
-            except Exception:
-                pass
-            print(f"warn: AI HTTP {e.code} (context {len(context)} chars): {detail}", file=sys.stderr)
-            reason = f"HTTP {e.code}"
-            if not (e.code == 413 or "too long" in detail.lower() or "too large" in detail.lower()):
-                break                       # auth / quota / model errors: retrying smaller won't help
-        except Exception as e:
-            print(f"warn: AI call failed ({backend}): {e}", file=sys.stderr)
-            reason = type(e).__name__
-            if "too long" not in str(e).lower() and "token" not in str(e).lower():
-                break
-    if text is None:
-        return [], f"AI 建议生成失败（{label}，{reason}），今天只有下面的清单；详细原因见 Actions 日志"
-    allowed = {int(x) for x in re.findall(r"^\[[^\]]+\] #(\d+)", context, re.M)}
-    keep, dropped = [], 0
-    for ln in text.splitlines():
-        s = ln.strip()
-        if not s.startswith(("-", "*", "•")):
-            continue
-        s = s.lstrip("-*• ").strip()
-        refs = _leading_refs(s)
-        if not refs or not refs <= allowed:     # doesn't start with an issue, or cites one not in the list
-            dropped += 1
-            continue
-        keep.append("- " + s)
-    note = f"{label} 生成，仅供参考；每条只引用下方清单中的 issue"
-    if dropped:
-        note += f"；已剔除 {dropped} 条无法对应清单的建议"
-    return keep[:5], note
-
-
-def render_plan(now, by, pm, fields, overnight, since, ai=([], "")):
+def render_plan(now, by, pm, fields, overnight, since):
     out = [f"# 今日计划 {day_title(now)}", "",
            f"- 生成：纽约 {nyf(now, '%H:%M')}；状态来源："
            + ("Project「Status」字段" if fields is not None else "未配置 Project，按最近更新排序"), ""]
-
-    ai_lines, ai_note = ai
-    if ai_lines or ai_note:
-        out += ["## 今日建议（AI）", ""]
-        out += ai_lines or ["- （无）"]
-        out += ["", f"> {ai_note}", ""]
 
     def line(i):
         pri = (fields or {}).get(i["number"], (None, None))[1]
@@ -560,8 +512,7 @@ def cmd_plan(a):
     pm = parent_map(issues)
     by = plan_buckets(issues, fields)
     overnight = activity(since, now, issues)
-    ai = ai_suggestions([plan_context(by, fields, pm, now, overnight, *b) for b in AI_BUDGETS])
-    md = render_plan(now, by, pm, fields, overnight, since, ai)
+    md = render_plan(now, by, pm, fields, overnight, since)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(md, encoding="utf-8")
     summary(md)
@@ -598,10 +549,15 @@ def main(argv=None):
     pl = sub.add_parser("plan")
     pl.add_argument("--at-hour", type=int, default=8)
     pl.add_argument("--force", action="store_true")
+    wk = sub.add_parser("week")
+    wk.add_argument("--at-hour", type=int, default=18)
+    wk.add_argument("--start", help="override window start (ISO)")
+    wk.add_argument("--charts", action="store_true", help="embed charts/daily|effort-<date>.png")
+    wk.add_argument("--force", action="store_true")
     a = p.parse_args(argv)
     if not TOKEN:
         print("warn: no GITHUB_TOKEN; unauthenticated rate limit is 60 req/h", file=sys.stderr)
-    return cmd_log(a) if a.cmd == "log" else cmd_plan(a)
+    return {"log": cmd_log, "plan": cmd_plan, "week": cmd_week}[a.cmd](a)
 
 
 if __name__ == "__main__":

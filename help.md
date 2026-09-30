@@ -115,46 +115,42 @@ gh issue list -R lkebnl/work-log --state all --limit 500 \
 
 文件：
 - `.github/workflows/weekly-summary.yml`：定时和运行步骤
-- `.github/scripts/weekly_report.py`：统计、出图、生成周报
+- `.github/scripts/worklog.py week`：生成周报正文 → `reports/YYYY/YYYY-Www.md`
+- `.github/scripts/weekly_report.py`：统计、出图
 
-每周五自动完成：
+每周五纽约 18:20 自动完成（全部由代码生成，不调用 AI）：
 1. 拉取最近 8 周的 comment，sub-issue 的日志归入顶层工作线；
 2. 画两张图（历史图按日期保存）：
    - 每日活跃度（最近 14 天，周末日期淡色）→ `charts/daily-latest.png`
    - 每周精力分布（最近 8 周，开头没有数据的周省略）→ `charts/effort-latest.png`
-3. 用 GitHub Models 把本周日志整理成周报；
-4. 新建一个 `Weekly report YYYY-MM-DD` issue，包含周报、图、统计表和折叠的原始日志。
+3. 生成周报文件 `reports/YYYY/YYYY-Www.md`：各工作线概况表、本周关闭/新建、7 天未动项、按工作线分组的全部评论（带链接），并引用上面两张图；
+4. 不再新建 issue，周报直接提交进仓库。需要文字版时把周报文件贴给 Copilot / Claude 整理。
 
 ### 安装
 
 1. **Add file → Create new file**，路径输入 `.github/workflows/weekly-summary.yml`（输入 `/` 会自动建目录），粘贴内容，提交到 `main`；
 2. 用同样方式添加 `.github/scripts/weekly_report.py`；
 3. **Actions → Weekly work-log summary → Run workflow** 手动跑一次；
-4. 确认出现 `charts/` 目录和新的周报 issue。
+4. 确认出现 `reports/` 和 `charts/` 下的新文件（手动运行时勾选 force）。
 
 ### 定时
 
-```yaml
-on:
-  schedule:
-    - cron: '0 21 * * 5'   # 分 时 日 月 星期（UTC）
-```
+cron 只认 UTC。三个 workflow 都同时排夏令时和冬令时对应的两个 UTC 时刻，由脚本按纽约时间判断，只执行一次，**不需要随季节手动修改**：
 
-| 想要（美东时间） | cron |
+| 任务（纽约时间） | cron（UTC） |
 |---|---|
-| 周五 17:00（夏令时） | `0 21 * * 5` |
-| 周五 12:00（夏令时） | `0 16 * * 5` |
-| 周一 8:00（夏令时） | `0 12 * * 1` |
-| 工作日 18:00（夏令时） | `0 22 * * 1-5` |
+| 计划：工作日 08:03 | `3 12 * * 1-5` 和 `3 13 * * 1-5` |
+| 日志：工作日 18:07 | `7 22 * * 1-5` 和 `7 23 * * 1-5` |
+| 周报：周五 18:20 | `20 22 * * 5` 和 `20 23 * * 5` |
 
-- cron 只认 UTC，**冬令时会早一小时**（`0 21` 变成 16:00），在意的话 11 月把 21 改成 22；
-- 定时运行可能延迟几分钟到半小时；
+- 想改时间：同时改 yml 里的两个 cron（相差 1 小时）和脚本参数 `--at-hour`；
+- 定时运行可能延迟几分钟到半小时，不影响结果；
 - 只有默认分支（`main`）上的 yml 会定时触发；
-- 公开仓库 60 天没有活动会自动暂停定时工作流，在 Actions 页面点 **Enable workflow** 即可恢复。
+- 仓库 60 天没有活动会自动暂停定时工作流，在 Actions 页面点 **Enable workflow** 即可恢复（每天自动提交本身就算活动）。
 
 ### 语言
 
-默认英文。手动运行时 `lang` 填 `zh` 输出中文；想让定时运行也用中文，把 yml 里两处 `inputs.lang || 'en'` 改成 `'zh'`。原始日志部分始终保留原文。图例取 issue 标题方括号里的内容，所以新工作线的标题最好带英文方括号，如 `[FEMB]`。
+日志、计划、周报的标题和说明是中文，评论保持原文。图表标题由定时任务固定为中文（yml 里 `REPORT_LANG: zh`，改成 `en` 即为英文）。图例取 issue 标题方括号里的内容，所以新工作线的标题最好带英文方括号，如 `[FEMB]`。
 
 ### 在 README 显示图
 
@@ -175,7 +171,7 @@ on:
 | 现象 | 处理 |
 |---|---|
 | "Commit chart" 报 403 / permission denied | Settings → Actions → General → Workflow permissions → **Read and write** |
-| 周报正文写着 generation failed | GitHub Models 调用失败，图和原始日志照常发布；查看运行日志 |
+| 手动运行成功但没有新周报 | 非周五或本周文件已存在；手动运行时勾选 force |
 | 某条线没出现在图里 | 该线在统计周期内没有 comment |
 | sub-issue 单独成了一条线 | 它没有挂到父 issue 下面 |
 
@@ -185,11 +181,11 @@ on:
 
 ## 6. 分享与权限
 
-- 本仓库是**公开**的：任何人不登录都能读到 issue 和 comment（包括通过 API）。内部信息请不要写进来，或者把仓库改成私有。
+- 本仓库已改为**私有**：只有协作者能读到 issue、comment 和自动生成的文件。
 - 改成私有后给别人看：
   - 仓库：Settings → Collaborators → 添加账号，给 **Read** 权限；
   - 看板：Project 右上角 ⋯ → Settings → **Manage access**，需要单独添加。
-- 让别人收到周报：请对方 **Watch** 本仓库，或在周报里 @ 对方。
+- 让别人看周报：把对方加为协作者后发 `reports/` 下的文件链接；或者把周报贴给 AI 整理成邮件再发。
 - 别人用自己的 Copilot 读本仓库，消耗的是**对方**的额度；Copilot 只能读到对方账号有权限看的内容。
 
 ---
@@ -209,7 +205,7 @@ on:
 - Free 计划下，每次 chat（包括让它总结日志）占一次月度额度，用完即停，不会额外扣钱。
 - 查看额度：VS Code 状态栏的 Copilot 图标 / Copilot Chat 输入框旁的仪表盘图标 / Settings → Billing and licensing → Usage。
 - Copilot Chat 读不到你的账单数据，问它"还有多少额度"只会是猜测。
-- 本仓库的自动周报用的是 GitHub Models，不占用 Copilot chat 次数。
+- 本仓库的自动日志、计划、周报都不调用 AI，不占用任何额度。（GitHub Models 已于 2026-07-30 停止服务。）
 
 ---
 
