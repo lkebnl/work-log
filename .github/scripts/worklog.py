@@ -138,17 +138,62 @@ def all_issues():
             if "pull_request" not in i]
 
 
+class Tree:
+    """Issue hierarchy from sub-issues, any depth (workstream -> task -> sub-task ...).
+
+    Order is stable: top-level issues by number, children in the order shown on
+    the parent issue (the sub-issues API order)."""
+
+    def __init__(self, issues, children):
+        self.by_num = {i["number"]: i for i in issues}
+        self.children = {p: [c for c in cs if c in self.by_num] for p, cs in children.items()}
+        self.parent = {c: p for p, cs in self.children.items() for c in cs}
+        self._order, self._depth = {}, {}
+        roots = sorted(n for n in self.by_num if n not in self.parent)
+        stack = [(r, 0) for r in reversed(roots)]
+        while stack:                                   # iterative pre-order DFS
+            n, d = stack.pop()
+            if n in self._order:
+                continue                               # guard against cycles / duplicates
+            self._order[n], self._depth[n] = len(self._order), d
+            stack.extend((c, d + 1) for c in reversed(self.children.get(n, [])))
+
+    def root(self, n):
+        seen = set()
+        while n in self.parent and n not in seen:
+            seen.add(n)
+            n = self.parent[n]
+        return n
+
+    def ancestors(self, n):
+        out, seen = [], set()
+        while n in self.parent and n not in seen:
+            seen.add(n)
+            n = self.parent[n]
+            out.append(n)
+        return out
+
+    def order(self, n):
+        return self._order.get(n, 10**9 + n)
+
+    def depth(self, n):
+        return self._depth.get(n, 0)
+
+    def title(self, n):
+        return self.by_num[n]["title"] if n in self.by_num else f"#{n}"
+
+
 def parent_map(issues):
-    """child number -> (parent number, parent title)."""
-    pm = {}
+    """Build the full issue tree (kept under this name for the callers)."""
+    children = {}
     for i in issues:
         if (i.get("sub_issues_summary") or {}).get("total"):
             try:
-                for c in get(f"/repos/{REPO}/issues/{i['number']}/sub_issues", per_page=100):
-                    pm[c["number"]] = (i["number"], i["title"])
+                cs = get(f"/repos/{REPO}/issues/{i['number']}/sub_issues", per_page=100)
+                children[i["number"]] = [c["number"] for c in cs]
             except urllib.error.HTTPError as e:
                 print(f"warn: sub_issues #{i['number']}: {e}", file=sys.stderr)
-    return pm
+    return Tree(issues, children)
 
 
 def activity(start, end, issues):
@@ -187,37 +232,86 @@ def activity(start, end, issues):
 
 
 def group_key(issue, pm):
-    return pm.get(issue["number"], (issue["number"], issue["title"]))
+    """Top-level workstream of an issue: (number, title)."""
+    r = pm.root(issue["number"])
+    return r, pm.title(r)
 
 
 # ---------------------------------------------------------------- log
-def render_groups(acts, pm, level=2):
-    """Activity grouped by parent issue (workstream), full comment text with links."""
+def _entry_lines(es):
     out = []
-    h = "#" * level
+    for e in es:
+        who = f" · {e['who']}" if e["who"] else ""
+        if e["kind"] == "comment":
+            out.append(f"- **{nyf(e['t'])}**{who} · [评论]({e['url']})")
+            out.append(quote(e["text"]))
+        else:
+            out.append(f"- **{nyf(e['t'])}**{who} · 状态：{e['text']}")
+    return out
+
+
+def tree_list(items, pm, fmt=None):
+    """Bullet list grouped by workstream, indented by depth in the issue tree.
+
+    fmt(issue, indent) -> list of lines; default is '- #n title'. A workstream
+    heading line is printed when the workstream itself is not in `items`."""
+    fmt = fmt or (lambda i, ind: [f"{ind}- #{i['number']} {i['title']}"])
     groups = {}
-    for i, es in acts:
-        groups.setdefault(group_key(i, pm), []).append((i, es))
+    for i in items:
+        groups.setdefault(pm.root(i["number"]), []).append(i)
+    out = []
+    for r in sorted(groups, key=pm.order):
+        its = sorted(groups[r], key=lambda i: pm.order(i["number"]))
+        listed = {x["number"] for x in its} | {r}       # the workstream line is always shown
+        if its[0]["number"] != r:
+            out.append(f"- **{pm.title(r)} #{r}**")    # workstream header (level 0)
+        for i in its:
+            n = i["number"]
+            # nest under the nearest ancestor that is actually in this list, so an item
+            # whose parent sits in another section is not drawn under an unrelated sibling
+            level = 0 if n == r else sum(1 for a in pm.ancestors(n) if a in listed)
+            lines = fmt(i, "  " * level)
+            par = pm.parent.get(n)
+            if par is not None and par != r and par not in listed:
+                lines[0] += f"（← #{par}）"
+            out.extend(lines)
+        out.append("")
+    return out
 
-    def last_t(items):
-        return max(e["t"] for _, es in items for e in es)
 
-    for (pn, ptitle), items in sorted(groups.items(), key=lambda kv: last_t(kv[1]), reverse=True):
-        out += [f"{h} {ptitle} #{pn}", ""]
-        items.sort(key=lambda it: (not any(e["text"].startswith("关闭") for e in it[1]),
-                                   -max(e["t"] for e in it[1]).timestamp()))
-        for i, es in items:
-            out.append(f"{h}# #{i['number']} {i['title']} · {i['state']}")
+def render_groups(acts, pm, level=2):
+    """Activity laid out along the issue tree: workstream -> sub-issue -> sub-sub-issue.
+
+    Every active issue appears under its full chain of parents; parents without
+    activity of their own are shown as headings marked 无更新 so the hierarchy
+    stays visible. Order is fixed (issue number / sub-issue order), not by time."""
+    active = {i["number"]: es for i, es in acts}
+    if not active:
+        return []
+    need = set(active)
+    for n in active:
+        need.update(pm.ancestors(n))
+    out = []
+
+    def walk(n, d):
+        h = "#" * min(level + d, 6)
+        i = pm.by_num.get(n, {})
+        state = i.get("state", "")
+        idle = "" if n in active or d == 0 else "（本窗口无更新）"
+        if d == 0:
+            out.append(f"{h} {pm.title(n)} #{n}" + (f" · {state}" if state == "closed" else "") + idle)
+        else:
+            out.append(f"{h} #{n} {pm.title(n)} · {state}{idle}")
+        out.append("")
+        if n in active:
+            out.extend(_entry_lines(active[n]))
             out.append("")
-            for e in es:
-                who = f" · {e['who']}" if e["who"] else ""
-                if e["kind"] == "comment":
-                    out.append(f"- **{nyf(e['t'])}**{who} · [评论]({e['url']})")
-                    out.append(quote(e["text"]))
-                else:
-                    out.append(f"- **{nyf(e['t'])}**{who} · 状态：{e['text']}")
-            out.append("")
+        for c in pm.children.get(n, []):
+            if c in need:
+                walk(c, d + 1)
 
+    for r in sorted({pm.root(n) for n in need}, key=pm.order):
+        walk(r, 0)
     return out
 
 
@@ -239,8 +333,7 @@ def render_log(start, end, acts, issues, pm):
     active = {i["number"] for i, _ in acts}
     idle = [i for i in issues if i["state"] == "open" and i["number"] not in active]
     out += ["## 本窗口无更新的 open issue", ""]
-    out += [f"- #{i['number']} {i['title']}" for i in sorted(idle, key=lambda x: x["number"])] or ["- （无）"]
-    out.append("")
+    out += tree_list(idle, pm) or ["- （无）", ""]
     return "\n".join(out)
 
 
@@ -300,8 +393,8 @@ def render_week(start, end, acts, issues, pm, charts_stamp=None):
         r["new"] += sum(1 for e in es if e["text"] == "新建")
         r["closed"] += sum(1 for e in es if e["text"].startswith("关闭"))
     out += ["## 各工作线概况", "", "| 工作线 | 评论 | 新建 | 关闭 | 有活动的 issue |", "|---|---:|---:|---:|---|"]
-    for (pn, pt), r in sorted(rows.items(), key=lambda kv: -kv[1]["c"]):
-        refs = " ".join(f"#{n}" for n in sorted(r["issues"]))
+    for (pn, pt), r in sorted(rows.items(), key=lambda kv: pm.order(kv[0][0])):
+        refs = " ".join(f"#{n}" for n in sorted(r["issues"], key=pm.order))
         out.append(f"| {pt} #{pn} | {r['c']} | {r['new']} | {r['closed']} | {refs} |")
     if not rows:
         out.append("| （无） | 0 | 0 | 0 | |")
@@ -316,9 +409,9 @@ def render_week(start, end, acts, issues, pm, charts_stamp=None):
     stale_cut = end - dt.timedelta(days=STALE_DAYS)
     stale = [i for i in issues if i["state"] == "open" and ts(i["updated_at"]) < stale_cut]
     out += [f"## 超过 {STALE_DAYS} 天无更新的 open issue", ""]
-    out += [f"- #{i['number']} {i['title']}（最后更新 {nyf(ts(i['updated_at']), '%m-%d')}）"
-            for i in sorted(stale, key=lambda x: x["updated_at"])] or ["- （无）"]
-    out += ["", "## 本周明细", ""]
+    out += tree_list(stale, pm, lambda i, ind: [
+        f"{ind}- #{i['number']} {i['title']}（最后更新 {nyf(ts(i['updated_at']), '%m-%d')}）"]) or ["- （无）", ""]
+    out += ["## 本周明细", ""]
     out += render_groups(acts, pm, level=3) or ["- （无）", ""]
     return "\n".join(out)
 
@@ -443,27 +536,17 @@ def render_plan(now, by, pm, fields, overnight, since):
            f"- 生成：纽约 {nyf(now, '%H:%M')}；状态来源："
            + ("Project「Status」字段" if fields is not None else "未配置 Project，按最近更新排序"), ""]
 
-    def line(i):
+    def line(i, ind):
         pri = (fields or {}).get(i["number"], (None, None))[1]
-        head = f"- [ ] #{i['number']} {i['title']}" + (f"（{pri}）" if pri else "")
+        lines = [f"{ind}- [ ] #{i['number']} {i['title']}" + (f"（{pri}）" if pri else "")]
         c = last_comment(i["number"])
         if c:
-            head += f"\n  - 上次记录 {nyf(ts(c['created_at']))}：{snippet(c.get('body'))} [→]({c['html_url']})"
-        return head
+            lines.append(f"{ind}  - 上次记录 {nyf(ts(c['created_at']))}：{snippet(c.get('body'))} [→]({c['html_url']})")
+        return lines
 
     def section(title, items):
         out.extend([f"## {title}", ""])
-        if not items:
-            out.extend(["- （无）", ""])
-            return
-        groups = {}
-        for i in items:
-            groups.setdefault(group_key(i, pm), []).append(i)
-        for (pn, pt), its in sorted(groups.items()):
-            out.append(f"**{pt} #{pn}**")
-            out.append("")
-            out.extend(line(i) for i in sorted(its, key=lambda x: ts(x["updated_at"]), reverse=True))
-            out.append("")
+        out.extend(tree_list(items, pm, line) or ["- （无）", ""])
 
     stale_cut = now - dt.timedelta(days=STALE_DAYS)
     if fields is not None:
@@ -479,7 +562,7 @@ def render_plan(now, by, pm, fields, overnight, since):
 
     out += [f"## 上次日志之后的新动态（纽约 {nyf(since, '%m-%d %H:%M')} 起）", ""]
     if overnight:
-        for i, es in overnight:
+        for i, es in sorted(overnight, key=lambda x: pm.order(x[0]["number"])):
             for e in es:
                 what = snippet(e["text"], 100) if e["kind"] == "comment" else f"状态：{e['text']}"
                 out.append(f"- #{i['number']} {nyf(e['t'])} · {what} [→]({e['url']})")
@@ -488,8 +571,8 @@ def render_plan(now, by, pm, fields, overnight, since):
     out.append("")
 
     out += [f"## 超过 {STALE_DAYS} 天无更新（进行中 / 待办）", ""]
-    out += [f"- #{i['number']} {i['title']}（最后更新 {nyf(ts(i['updated_at']), '%m-%d')}）" for i in stale] or ["- （无）"]
-    out.append("")
+    out += tree_list(stale, pm, lambda i, ind: [
+        f"{ind}- #{i['number']} {i['title']}（最后更新 {nyf(ts(i['updated_at']), '%m-%d')}）"]) or ["- （无）", ""]
     if backlog_n or other_n:
         out += ["## 备注", "", f"- Backlog {backlog_n} 项、未设状态 {other_n} 项未列出", ""]
     return "\n".join(out)
