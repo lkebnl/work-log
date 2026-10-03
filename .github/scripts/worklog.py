@@ -22,6 +22,7 @@ Environment:
   PROJECT_TOKEN    optional, classic PAT with read:project (needed for Status)
   PROJECT_OWNER    optional, project owner login, default = REPO owner
   PROJECT_NUMBER   optional, the N in .../projects/N
+  REPORT_LANG      en (default) or zh: language of the log and weekly report
 """
 from __future__ import annotations
 
@@ -45,6 +46,48 @@ TOKEN = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
 ROOT = Path(os.environ.get("WORKLOG_ROOT", "."))
 STATE = ROOT / "logs" / ".state.json"
 WEEKDAY = "一二三四五六日"
+# Output language for the log and weekly report: REPORT_LANG=en (default) or zh.
+LANG = "zh" if os.environ.get("REPORT_LANG", "en").lower().startswith("zh") else "en"
+TXT = {
+    "en": {
+        "opened": "opened", "closed": "closed", "reopened": "reopened", "comment": "comment", "state": "status",
+        "log_title": "Work log {day}", "week_title": "Weekly report {wk} ({a} – {b})",
+        "win_ny": "Window (New York)", "win_utc": "Window (UTC)",
+        "summary": "Issues with activity: {n} (opened {o}, closed {c}); comments: {m}",
+        "source": "Source: issue comments and status events fetched by script, no AI; issue bodies not included",
+        "idle_mark": " (no update in this window)", "idle_h": "Open issues with no update in this window",
+        "none": "(none)", "charts": "Charts", "daily_alt": "Daily activity", "effort_alt": "Weekly effort",
+        "table_h": "Workstreams", "table_cols": "| Workstream | Comments | Opened | Closed | Issues with activity |",
+        "closed_h": "Closed this week", "opened_h": "Opened this week",
+        "stale_h": "Open issues with no update for over {d} days", "last_upd": "last updated {d}",
+        "details_h": "Details",
+    },
+    "zh": {
+        "opened": "新建", "closed": "关闭", "reopened": "重新打开", "comment": "评论", "state": "状态",
+        "log_title": "工作记录 {day}", "week_title": "周报 {wk}（{a} – {b}）",
+        "win_ny": "窗口（纽约）", "win_utc": "窗口（UTC）",
+        "summary": "有活动的 issue：{n}（新建 {o}，关闭 {c}）；评论：{m}",
+        "source": "来源：脚本直接抓取 issue 评论与状态事件，未经 AI 处理；issue 正文不收录",
+        "idle_mark": "（本窗口无更新）", "idle_h": "本窗口无更新的 open issue",
+        "none": "（无）", "charts": "图表", "daily_alt": "每日活跃度", "effort_alt": "每周精力分布",
+        "table_h": "各工作线概况", "table_cols": "| 工作线 | 评论 | 新建 | 关闭 | 有活动的 issue |",
+        "closed_h": "本周关闭", "opened_h": "本周新建",
+        "stale_h": "超过 {d} 天无更新的 open issue", "last_upd": "最后更新 {d}",
+        "details_h": "本周明细",
+    },
+}
+
+
+def T(key, **kw):
+    return TXT[LANG][key].format(**kw)
+
+
+def ev_label(e):
+    """Status-event text in the output language, e.g. 'closed (completed)' / '关闭（completed）'."""
+    base = T(e["ev"])
+    if e.get("reason"):
+        return f"{base} ({e['reason']})" if LANG == "en" else f"{base}（{e['reason']}）"
+    return base
 STALE_DAYS = 7
 
 
@@ -100,6 +143,8 @@ def nyf(t, fmt="%m-%d %H:%M"):
 
 def day_title(t):
     d = t.astimezone(NY)
+    if LANG == "en":
+        return f"{d:%Y-%m-%d} ({d:%a})"
     return f"{d:%Y-%m-%d}（周{WEEKDAY[d.weekday()]}）"
 
 
@@ -205,7 +250,7 @@ def activity(start, end, issues):
         n, entries = i["number"], []
         created = ts(i["created_at"])
         if start <= created < end:
-            entries.append({"t": created, "kind": "event", "text": "新建",
+            entries.append({"t": created, "kind": "event", "ev": "opened", "text": "",
                             "who": (i.get("user") or {}).get("login"), "url": i["html_url"]})
         for c in get(f"/repos/{REPO}/issues/{n}/comments", since=iso(start), per_page=100):
             t = ts(c["created_at"])
@@ -218,12 +263,8 @@ def activity(start, end, issues):
             t = ts(e["created_at"])
             if not (start <= t < end):
                 continue
-            if e["event"] == "closed":
-                r = e.get("state_reason")
-                label = f"关闭（{r}）" if r else "关闭"
-            else:
-                label = "重新打开"
-            entries.append({"t": t, "kind": "event", "text": label,
+            entries.append({"t": t, "kind": "event", "ev": e["event"],
+                            "reason": e.get("state_reason") if e["event"] == "closed" else None, "text": "",
                             "who": (e.get("actor") or {}).get("login"), "url": i["html_url"]})
         if entries:
             entries.sort(key=lambda x: x["t"])
@@ -243,10 +284,10 @@ def _entry_lines(es):
     for e in es:
         who = f" · {e['who']}" if e["who"] else ""
         if e["kind"] == "comment":
-            out.append(f"- **{nyf(e['t'])}**{who} · [评论]({e['url']})")
+            out.append(f"- **{nyf(e['t'])}**{who} · [{T('comment')}]({e['url']})")
             out.append(quote(e["text"]))
         else:
-            out.append(f"- **{nyf(e['t'])}**{who} · 状态：{e['text']}")
+            out.append(f"- **{nyf(e['t'])}**{who} · {T('state')}: {ev_label(e)}")
     return out
 
 
@@ -283,7 +324,7 @@ def render_groups(acts, pm, level=2):
     """Activity laid out along the issue tree: workstream -> sub-issue -> sub-sub-issue.
 
     Every active issue appears under its full chain of parents; parents without
-    activity of their own are shown as headings marked 无更新 so the hierarchy
+    activity of their own are still shown as headings (marked idle) so the hierarchy
     stays visible. Order is fixed (issue number / sub-issue order), not by time."""
     active = {i["number"]: es for i, es in acts}
     if not active:
@@ -297,7 +338,7 @@ def render_groups(acts, pm, level=2):
         h = "#" * min(level + d, 6)
         i = pm.by_num.get(n, {})
         state = i.get("state", "")
-        idle = "" if n in active or d == 0 else "（本窗口无更新）"
+        idle = "" if n in active or d == 0 else T("idle_mark")
         if d == 0:
             out.append(f"{h} {pm.title(n)} #{n}" + (f" · {state}" if state == "closed" else "") + idle)
         else:
@@ -317,23 +358,23 @@ def render_groups(acts, pm, level=2):
 
 def render_log(start, end, acts, issues, pm):
     n_comments = sum(1 for _, es in acts for e in es if e["kind"] == "comment")
-    n_closed = sum(1 for _, es in acts if any(e["text"].startswith("关闭") for e in es))
-    n_new = sum(1 for _, es in acts if any(e["text"] == "新建" for e in es))
+    n_closed = sum(1 for _, es in acts if any(e.get("ev") == "closed" for e in es))
+    n_new = sum(1 for _, es in acts if any(e.get("ev") == "opened" for e in es))
     out = [
-        f"# 工作记录 {day_title(end)}",
+        f"# {T('log_title', day=day_title(end))}",
         "",
-        f"- 窗口（纽约）：{nyf(start, '%Y-%m-%d %H:%M')} → {nyf(end, '%Y-%m-%d %H:%M')}",
-        f"- 窗口（UTC）：{iso(start)} → {iso(end)}",
-        f"- 有活动的 issue：{len(acts)}（新建 {n_new}，关闭 {n_closed}）；评论：{n_comments}",
-        "- 来源：脚本直接抓取 issue 评论与状态事件，未经 AI 处理；issue 正文不收录",
+        f"- {T('win_ny')}: {nyf(start, '%Y-%m-%d %H:%M')} → {nyf(end, '%Y-%m-%d %H:%M')}",
+        f"- {T('win_utc')}: {iso(start)} → {iso(end)}",
+        f"- {T('summary', n=len(acts), o=n_new, c=n_closed, m=n_comments)}",
+        f"- {T('source')}",
         "",
     ]
     out += render_groups(acts, pm)
 
     active = {i["number"] for i, _ in acts}
     idle = [i for i in issues if i["state"] == "open" and i["number"] not in active]
-    out += ["## 本窗口无更新的 open issue", ""]
-    out += tree_list(idle, pm) or ["- （无）", ""]
+    out += [f"## {T('idle_h')}", ""]
+    out += tree_list(idle, pm) or [f"- {T('none')}", ""]
     return "\n".join(out)
 
 
@@ -368,20 +409,20 @@ def cmd_log(a):
 def render_week(start, end, acts, issues, pm, charts_stamp=None):
     y, w, _ = end.astimezone(NY).isocalendar()
     n_comments = sum(1 for _, es in acts for e in es if e["kind"] == "comment")
-    closed = [(i, e) for i, es in acts for e in es if e["text"].startswith("关闭")]
-    opened = [(i, e) for i, es in acts for e in es if e["text"] == "新建"]
+    closed = [(i, e) for i, es in acts for e in es if e.get("ev") == "closed"]
+    opened = [(i, e) for i, es in acts for e in es if e.get("ev") == "opened"]
     out = [
-        f"# 周报 {y}-W{w:02d}（{nyf(start, '%m-%d')} – {nyf(end, '%m-%d')}）",
+        f"# {T('week_title', wk=f'{y}-W{w:02d}', a=nyf(start, '%m-%d'), b=nyf(end, '%m-%d'))}",
         "",
-        f"- 窗口（纽约）：{nyf(start, '%Y-%m-%d %H:%M')} → {nyf(end, '%Y-%m-%d %H:%M')}",
-        f"- 有活动的 issue：{len(acts)}（新建 {len(opened)}，关闭 {len(closed)}）；评论：{n_comments}",
-        "- 来源：脚本直接抓取 issue 评论与状态事件，未经 AI 处理；issue 正文不收录",
+        f"- {T('win_ny')}: {nyf(start, '%Y-%m-%d %H:%M')} → {nyf(end, '%Y-%m-%d %H:%M')}",
+        f"- {T('summary', n=len(acts), o=len(opened), c=len(closed), m=n_comments)}",
+        f"- {T('source')}",
         "",
     ]
     if charts_stamp:
-        out += ["## 图表", "",
-                f"![每日活跃度](../../charts/daily-{charts_stamp}.png)", "",
-                f"![每周精力分布](../../charts/effort-{charts_stamp}.png)", ""]
+        out += [f"## {T('charts')}", "",
+                f"![{T('daily_alt')}](../../charts/daily-{charts_stamp}.png)", "",
+                f"![{T('effort_alt')}](../../charts/effort-{charts_stamp}.png)", ""]
 
     # per-workstream table
     rows = {}
@@ -390,29 +431,31 @@ def render_week(start, end, acts, issues, pm, charts_stamp=None):
         r = rows.setdefault(k, {"issues": set(), "c": 0, "new": 0, "closed": 0})
         r["issues"].add(i["number"])
         r["c"] += sum(1 for e in es if e["kind"] == "comment")
-        r["new"] += sum(1 for e in es if e["text"] == "新建")
-        r["closed"] += sum(1 for e in es if e["text"].startswith("关闭"))
-    out += ["## 各工作线概况", "", "| 工作线 | 评论 | 新建 | 关闭 | 有活动的 issue |", "|---|---:|---:|---:|---|"]
+        r["new"] += sum(1 for e in es if e.get("ev") == "opened")
+        r["closed"] += sum(1 for e in es if e.get("ev") == "closed")
+    out += [f"## {T('table_h')}", "", T("table_cols"), "|---|---:|---:|---:|---|"]
     for (pn, pt), r in sorted(rows.items(), key=lambda kv: pm.order(kv[0][0])):
         refs = " ".join(f"#{n}" for n in sorted(r["issues"], key=pm.order))
         out.append(f"| {pt} #{pn} | {r['c']} | {r['new']} | {r['closed']} | {refs} |")
     if not rows:
-        out.append("| （无） | 0 | 0 | 0 | |")
+        out.append(f"| {T('none')} | 0 | 0 | 0 | |")
     out.append("")
 
-    out += ["## 本周关闭", ""]
-    out += [f"- #{i['number']} {i['title']}（{nyf(e['t'], '%m-%d')}，{e['text']}）" for i, e in closed] or ["- （无）"]
-    out += ["", "## 本周新建", ""]
-    out += [f"- #{i['number']} {i['title']}（{nyf(e['t'], '%m-%d')}）" for i, e in opened] or ["- （无）"]
+    sep = ", " if LANG == "en" else "，"
+    lp, rp = (" (", ")") if LANG == "en" else ("（", "）")
+    out += [f"## {T('closed_h')}", ""]
+    out += [f"- #{i['number']} {i['title']}{lp}{nyf(e['t'], '%m-%d')}{sep}{e.get('reason') or T('closed')}{rp}" for i, e in closed] or [f"- {T('none')}"]
+    out += ["", f"## {T('opened_h')}", ""]
+    out += [f"- #{i['number']} {i['title']}{lp}{nyf(e['t'], '%m-%d')}{rp}" for i, e in opened] or [f"- {T('none')}"]
     out.append("")
 
     stale_cut = end - dt.timedelta(days=STALE_DAYS)
     stale = [i for i in issues if i["state"] == "open" and ts(i["updated_at"]) < stale_cut]
-    out += [f"## 超过 {STALE_DAYS} 天无更新的 open issue", ""]
+    out += [f"## {T('stale_h', d=STALE_DAYS)}", ""]
     out += tree_list(stale, pm, lambda i, ind: [
-        f"{ind}- #{i['number']} {i['title']}（最后更新 {nyf(ts(i['updated_at']), '%m-%d')}）"]) or ["- （无）", ""]
-    out += ["## 本周明细", ""]
-    out += render_groups(acts, pm, level=3) or ["- （无）", ""]
+        f"{ind}- #{i['number']} {i['title']}{lp}{T('last_upd', d=nyf(ts(i['updated_at']), '%m-%d'))}{rp}"]) or [f"- {T('none')}", ""]
+    out += [f"## {T('details_h')}", ""]
+    out += render_groups(acts, pm, level=3) or [f"- {T('none')}", ""]
     return "\n".join(out)
 
 
@@ -564,7 +607,7 @@ def render_plan(now, by, pm, fields, overnight, since):
     if overnight:
         for i, es in sorted(overnight, key=lambda x: pm.order(x[0]["number"])):
             for e in es:
-                what = snippet(e["text"], 100) if e["kind"] == "comment" else f"状态：{e['text']}"
+                what = snippet(e["text"], 100) if e["kind"] == "comment" else f"{T('state')}: {ev_label(e)}"
                 out.append(f"- #{i['number']} {nyf(e['t'])} · {what} [→]({e['url']})")
     else:
         out.append("- （无）")
