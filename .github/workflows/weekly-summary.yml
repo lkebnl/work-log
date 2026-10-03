@@ -42,6 +42,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          REPORT_LANG: en
         run: python3 .github/scripts/worklog.py week --at-hour 18 --charts ${{ inputs.force && '--force' || '' }}
 
       - name: Install chart dependencies
@@ -57,7 +58,7 @@ jobs:
           REPO: ${{ github.repository }}
           WEEKS: ${{ inputs.weeks || '8' }}
           DAILY_DAYS: ${{ inputs.daily_days || '14' }}
-          REPORT_LANG: zh
+          REPORT_LANG: en
         run: python3 .github/scripts/weekly_report.py
 
       - name: Commit
