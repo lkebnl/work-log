@@ -37,11 +37,17 @@ jobs:
           REPORT_LANG: en
         run: python3 .github/scripts/worklog.py log --at-hour 18 ${{ inputs.force && '--force' || '' }}
 
+      - name: Update board index
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: python3 .github/scripts/worklog.py boards
+
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add logs
+          git add logs boards
           if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
           git commit -m "log: $(TZ=America/New_York date +%F)"
           git pull --rebase --autostash
