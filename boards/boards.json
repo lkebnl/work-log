@@ -1,0 +1,767 @@
+{
+ "1750-1D-00035": {
+  "spellings": [
+   "1750-1D-35"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-09T14:30:10Z",
+    "issue": 78,
+    "title": "Track for WIB",
+    "url": "https://github.com/lkebnl/work-log/issues/78#issuecomment-6082965176",
+    "kind": "comment",
+    "text": "1750-1D-35, Back from CERN, Repaired in room 233"
+   }
+  ]
+ },
+ "1750-1F-00010": {
+  "spellings": [
+   "1750-1F-10"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-09T13:57:35Z",
+    "issue": 78,
+    "title": "Track for WIB",
+    "url": "https://github.com/lkebnl/work-log/issues/78#issuecomment-6082390604",
+    "kind": "comment",
+    "text": "1750-1F-17, Back from CERN, Repaired in room 233, [J12 pin may discharge at ZYNQ side] 1750-1F-22, Back from CERN, Repaired in room 233 1750-1F-10, 2 slot disc…"
+   }
+  ]
+ },
+ "1750-1F-00017": {
+  "spellings": [
+   "1750-1F-17"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-09T13:57:35Z",
+    "issue": 78,
+    "title": "Track for WIB",
+    "url": "https://github.com/lkebnl/work-log/issues/78#issuecomment-6082390604",
+    "kind": "comment",
+    "text": "1750-1F-17, Back from CERN, Repaired in room 233, [J12 pin may discharge at ZYNQ side] 1750-1F-22, Back from CERN, Repaired in room 233 1750-1F-10, 2 slot disc…"
+   },
+   {
+    "time": "2026-10-05T22:17:50Z",
+    "issue": 59,
+    "title": "Correction of Temperature Sensor [U42 U47 U64]",
+    "url": "https://github.com/lkebnl/work-log/issues/59#issuecomment-6004272605",
+    "kind": "comment",
+    "text": "repair board 1750-1F-17 Pick up one CHA 7414-0 for U64 assembly new to U64 switch TOH at U64 to U42 switch CHA at U42 to U47"
+   },
+   {
+    "time": "2026-10-05T22:11:07Z",
+    "issue": 60,
+    "title": "Components pick up  Record in Room 96",
+    "url": "https://github.com/lkebnl/work-log/issues/60#issuecomment-6004143942",
+    "kind": "comment",
+    "text": "repair board 1750-1F-17 Pick up one CHA 7414-0 for U64"
+   },
+   {
+    "time": "2026-10-05T21:48:03Z",
+    "issue": 58,
+    "title": "Hardware Correction of WIB Pulser Oscillation",
+    "url": "https://github.com/lkebnl/work-log/issues/58#issuecomment-6003694997",
+    "kind": "comment",
+    "text": "for board 1750-1F-17 Remove C750 R360: 240 Ohm R726: 1kOhm"
+   },
+   {
+    "time": "2026-10-05T14:01:42Z",
+    "issue": 33,
+    "title": "Issue board 1750-1F-17 back from CERN, debug by Jack",
+    "url": "https://github.com/lkebnl/work-log/issues/33#issuecomment-5996035026",
+    "kind": "comment",
+    "text": "perform QC test for this board 1750-1F-17"
+   },
+   {
+    "time": "2026-09-29T21:23:12Z",
+    "issue": 33,
+    "title": "Issue board 1750-1F-17 back from CERN, debug by Jack",
+    "url": "https://github.com/lkebnl/work-log/issues/33",
+    "kind": "issue",
+    "text": "Issue board 1750-1F-17 back from CERN, debug by Jack Jack Updated that: With Ray's help I believe we found the issue I narrowed down the issue to the DDR4 I as…"
+   }
+  ]
+ },
+ "1750-1F-00022": {
+  "spellings": [
+   "1750-1F-22"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-09T13:57:35Z",
+    "issue": 78,
+    "title": "Track for WIB",
+    "url": "https://github.com/lkebnl/work-log/issues/78#issuecomment-6082390604",
+    "kind": "comment",
+    "text": "1750-1F-17, Back from CERN, Repaired in room 233, [J12 pin may discharge at ZYNQ side] 1750-1F-22, Back from CERN, Repaired in room 233 1750-1F-10, 2 slot disc…"
+   }
+  ]
+ },
+ "1826-1K-00031": {
+  "spellings": [
+   "1826-1K-31"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-09T14:00:02Z",
+    "issue": 79,
+    "title": "FEMB Tracking",
+    "url": "https://github.com/lkebnl/work-log/issues/79#issuecomment-6082432652",
+    "kind": "comment",
+    "text": "Version 1826-1K 1826-1K-31 room-216 at cable test setup, used as backup tested FEMB"
+   }
+  ]
+ },
+ "1826-1L-00007": {
+  "spellings": [
+   "1826-1L-07"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-24T16:39:07Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5818215921",
+    "kind": "comment",
+    "text": "Lou test board 1826-1L-07 1826-1L-33, all pass the QC tests"
+   }
+  ]
+ },
+ "1826-1L-00017": {
+  "spellings": [
+   "1826-1L-17"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-25T18:33:36Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5837554675",
+    "kind": "comment",
+    "text": "Kyra Test 1826-1L-17 1826-1L-20 , all pass the QC test"
+   }
+  ]
+ },
+ "1826-1L-00020": {
+  "spellings": [
+   "1826-1L-20"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-25T18:33:36Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5837554675",
+    "kind": "comment",
+    "text": "Kyra Test 1826-1L-17 1826-1L-20 , all pass the QC test"
+   }
+  ]
+ },
+ "1826-1L-00027": {
+  "spellings": [
+   "1826-1L-27"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-28T21:30:55Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5879089727",
+    "kind": "comment",
+    "text": "Lingyun Tested 1826-1L-58 and 1826-1L-27, both pass the QC"
+   },
+   {
+    "time": "2026-09-28T16:38:56Z",
+    "issue": 28,
+    "title": "Day Plan and Report",
+    "url": "https://github.com/lkebnl/work-log/issues/28#issuecomment-5874393592",
+    "kind": "comment",
+    "text": "0928 Today, we focus on FEMB and CRP Patch panel, here is the summary Shifter for HD/VD FEMB (09232026) Lingyun tested 1826-1L-58 and 1826-1L-27. Both passed Q…"
+   }
+  ]
+ },
+ "1826-1L-00028": {
+  "spellings": [
+   "1826-1L-28"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-24T00:27:48Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5805228065",
+    "kind": "comment",
+    "text": "安排学生和同事进行shifter值班。今天我开展测试，对板子 1826-1L-28 1826-1L-34进行测试，均通过QC 12 repaired 1826-1L boards + 18 VD FEMB boards Lingyun test board 28, 34 all pass the QC test"
+   }
+  ]
+ },
+ "1826-1L-00033": {
+  "spellings": [
+   "1826-1L-33"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-24T16:39:07Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5818215921",
+    "kind": "comment",
+    "text": "Lou test board 1826-1L-07 1826-1L-33, all pass the QC tests"
+   }
+  ]
+ },
+ "1826-1L-00034": {
+  "spellings": [
+   "1826-1L-34"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-24T00:27:48Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5805228065",
+    "kind": "comment",
+    "text": "安排学生和同事进行shifter值班。今天我开展测试，对板子 1826-1L-28 1826-1L-34进行测试，均通过QC 12 repaired 1826-1L boards + 18 VD FEMB boards Lingyun test board 28, 34 all pass the QC test"
+   }
+  ]
+ },
+ "1826-1L-00051": {
+  "spellings": [
+   "1826-1K_00051",
+   "1826-1L-0051"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-05T14:02:41Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5996053600",
+    "kind": "comment",
+    "text": "Test FEMB BNL_FEMB_IO-1826-1K_00051"
+   },
+   {
+    "time": "2026-10-01T19:34:08Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5939062110",
+    "kind": "comment",
+    "text": "> CE cover 0010 is not wide enough, Manhong solve this issue install 1826-1L-0051 into CE box, Augie have repair the CE box base > > for the issue cover, Manho…"
+   },
+   {
+    "time": "2026-09-28T16:47:35Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5874528815",
+    "kind": "comment",
+    "text": "CE cover 0010 is not wide enough, Manhong solve this issue install 1826-1L-0051 into CE box, Augie have repair the CE box base for the issue cover, Manhong sai…"
+   },
+   {
+    "time": "2026-09-28T16:38:56Z",
+    "issue": 28,
+    "title": "Day Plan and Report",
+    "url": "https://github.com/lkebnl/work-log/issues/28#issuecomment-5874393592",
+    "kind": "comment",
+    "text": "0928 Today, we focus on FEMB and CRP Patch panel, here is the summary Shifter for HD/VD FEMB (09232026) Lingyun tested 1826-1L-58 and 1826-1L-27. Both passed Q…"
+   }
+  ]
+ },
+ "1826-1L-00058": {
+  "spellings": [
+   "1826-1L-58"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-28T21:30:55Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5879089727",
+    "kind": "comment",
+    "text": "Lingyun Tested 1826-1L-58 and 1826-1L-27, both pass the QC"
+   },
+   {
+    "time": "2026-09-28T16:38:56Z",
+    "issue": 28,
+    "title": "Day Plan and Report",
+    "url": "https://github.com/lkebnl/work-log/issues/28#issuecomment-5874393592",
+    "kind": "comment",
+    "text": "0928 Today, we focus on FEMB and CRP Patch panel, here is the summary Shifter for HD/VD FEMB (09232026) Lingyun tested 1826-1L-58 and 1826-1L-27. Both passed Q…"
+   }
+  ]
+ },
+ "1826-1L-00061": {
+  "spellings": [
+   "1826-1L-61"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-08T19:15:12Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-6067238184",
+    "kind": "comment",
+    "text": "FEMB 1826-1L-61 sent to Ray for repair"
+   },
+   {
+    "time": "2026-09-24T14:18:27Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5815888009",
+    "kind": "comment",
+    "text": "pick up board 1826-1L-61, which wash the connectors warm up and do the test at cold, the connection is weak, also occurred 3 times last week at open dewar last…"
+   }
+  ]
+ },
+ "1865-1J-00012": {
+  "spellings": [
+   "1865-1J_00012"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-01T02:53:26Z",
+    "issue": 28,
+    "title": "Day Plan and Report",
+    "url": "https://github.com/lkebnl/work-log/issues/28#issuecomment-5923777242",
+    "kind": "comment",
+    "text": "Here is today's progress update, main focus on FEMB and ISEG. 1. FEMB Production / QC - Kyra tested and passed QC on 4 boards: 1865-1J_00012 + 1865-1K_00033, a…"
+   },
+   {
+    "time": "2026-09-30T15:12:18Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5914113729",
+    "kind": "comment",
+    "text": "Kyra test FEMB BNL_FEMB_I0-1865-1J_00012 and BNL_FEMB_IO-1865-1K_00005 but the board 05 meet connector issue. after talk with Shanshan, it was hurt at CERN and…"
+   }
+  ]
+ },
+ "1865-1J-00056": {
+  "spellings": [
+   "00056_BNL_FEMB_I0-1865-1J"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-01T20:39:04Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5940108317",
+    "kind": "comment",
+    "text": "Lou test 00056_BNL_FEMB_I0-1865-1J and BNL_FEMB_IO-1865-1K_00014, both pass the QC"
+   }
+  ]
+ },
+ "1865-1K-00001": {
+  "spellings": [
+   "1865-1K_00001"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-03T00:06:02Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5963418254",
+    "kind": "comment",
+    "text": "Lingyun tested FEMB BNL_FEMB_IO-1865-1K_00005 and BNL_FEMB_IO-1865-1K_00001, both pass the QC"
+   }
+  ]
+ },
+ "1865-1K-00004": {
+  "spellings": [
+   "1865-1K_00004"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-29T18:38:31Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5896364728",
+    "kind": "comment",
+    "text": "Karla Test BNL_FEMB_IO-1865-1K_00004 and BNL_FEMB_IO-1865-1K_00010, all pass the QC Test"
+   }
+  ]
+ },
+ "1865-1K-00005": {
+  "spellings": [
+   "1865-1K_00005"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-03T00:06:02Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5963418254",
+    "kind": "comment",
+    "text": "Lingyun tested FEMB BNL_FEMB_IO-1865-1K_00005 and BNL_FEMB_IO-1865-1K_00001, both pass the QC"
+   },
+   {
+    "time": "2026-10-02T14:03:27Z",
+    "issue": 44,
+    "title": "Issue Case 01: P4 Data connector on BNL_FEMB_IO-1865-1K_00005 and BNL_FEMB_IO-1865-1K_00039",
+    "url": "https://github.com/lkebnl/work-log/issues/44#issuecomment-5954167350",
+    "kind": "comment",
+    "text": "Ray have repair the board BNL_FEMB_IO-1865-1K_00005, we will do the QC test for this board Assembly this board into CE Box for QC Test"
+   },
+   {
+    "time": "2026-10-02T14:03:11Z",
+    "issue": 44,
+    "title": "Issue Case 01: P4 Data connector on BNL_FEMB_IO-1865-1K_00005 and BNL_FEMB_IO-1865-1K_00039",
+    "url": "https://github.com/lkebnl/work-log/issues/44#issuecomment-5954160954",
+    "kind": "comment",
+    "text": "at present, this issue found at BNL_FEMB_IO-1865-1K_00039 and BNL_FEMB_IO-1865-1K_00005 they are in same batch"
+   },
+   {
+    "time": "2026-10-01T02:53:26Z",
+    "issue": 28,
+    "title": "Day Plan and Report",
+    "url": "https://github.com/lkebnl/work-log/issues/28#issuecomment-5923777242",
+    "kind": "comment",
+    "text": "Here is today's progress update, main focus on FEMB and ISEG. 1. FEMB Production / QC - Kyra tested and passed QC on 4 boards: 1865-1J_00012 + 1865-1K_00033, a…"
+   },
+   {
+    "time": "2026-10-01T00:42:38Z",
+    "issue": 44,
+    "title": "Issue Case 01: P4 Data connector on BNL_FEMB_IO-1865-1K_00005 and BNL_FEMB_IO-1865-1K_00039",
+    "url": "https://github.com/lkebnl/work-log/issues/44",
+    "kind": "issue",
+    "text": "Issue Case 01: P4 Data connector on BNL_FEMB_IO-1865-1K_00005 and BNL_FEMB_IO-1865-1K_00039 the connector was broken at CERN, Krya do the QC and find it at 216…"
+   },
+   {
+    "time": "2026-09-30T15:12:18Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5914113729",
+    "kind": "comment",
+    "text": "Kyra test FEMB BNL_FEMB_I0-1865-1J_00012 and BNL_FEMB_IO-1865-1K_00005 but the board 05 meet connector issue. after talk with Shanshan, it was hurt at CERN and…"
+   }
+  ]
+ },
+ "1865-1K-00006": {
+  "spellings": [
+   "1865-1k-06"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-28T21:31:34Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5879104265",
+    "kind": "comment",
+    "text": "Xuyang Tested 1865-1k-35 and 1865-1k-06, both pass the QC"
+   },
+   {
+    "time": "2026-09-28T16:38:56Z",
+    "issue": 28,
+    "title": "Day Plan and Report",
+    "url": "https://github.com/lkebnl/work-log/issues/28#issuecomment-5874393592",
+    "kind": "comment",
+    "text": "0928 Today, we focus on FEMB and CRP Patch panel, here is the summary Shifter for HD/VD FEMB (09232026) Lingyun tested 1826-1L-58 and 1826-1L-27. Both passed Q…"
+   }
+  ]
+ },
+ "1865-1K-00007": {
+  "spellings": [
+   "1865-1K_00007"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-03T00:04:49Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5963406258",
+    "kind": "comment",
+    "text": "Shanshan Tested FEMB BNL_FEMB_IO-1865-1K_00027 and BNL_FEMB_IO-1865-1K_00007, both pass the QC"
+   }
+  ]
+ },
+ "1865-1K-00010": {
+  "spellings": [
+   "1865-1K_00010"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-29T18:38:31Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5896364728",
+    "kind": "comment",
+    "text": "Karla Test BNL_FEMB_IO-1865-1K_00004 and BNL_FEMB_IO-1865-1K_00010, all pass the QC Test"
+   }
+  ]
+ },
+ "1865-1K-00012": {
+  "spellings": [
+   "1865-1K_00012"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-08T16:36:40Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-6064538862",
+    "kind": "comment",
+    "text": "Test boards BNL_FEMB_IO-1865-1K_00039 and BNL_FEMB_IO-1865-1K_00012 board_39 have non-linearity issue board_12 pass the QC test"
+   }
+  ]
+ },
+ "1865-1K-00014": {
+  "spellings": [
+   "1865-1K_00014"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-01T20:39:04Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5940108317",
+    "kind": "comment",
+    "text": "Lou test 00056_BNL_FEMB_I0-1865-1J and BNL_FEMB_IO-1865-1K_00014, both pass the QC"
+   }
+  ]
+ },
+ "1865-1K-00016": {
+  "spellings": [
+   "1865-1K_00016"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-01T02:53:26Z",
+    "issue": 28,
+    "title": "Day Plan and Report",
+    "url": "https://github.com/lkebnl/work-log/issues/28#issuecomment-5923777242",
+    "kind": "comment",
+    "text": "Here is today's progress update, main focus on FEMB and ISEG. 1. FEMB Production / QC - Kyra tested and passed QC on 4 boards: 1865-1J_00012 + 1865-1K_00033, a…"
+   },
+   {
+    "time": "2026-10-01T00:40:52Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5922370163",
+    "kind": "comment",
+    "text": "Kyra test FEMB BNL_FEMB_IO-1865-1K_00016 and BNL_FEMB_IO-1865-1K_00020, both pass the QC test"
+   }
+  ]
+ },
+ "1865-1K-00020": {
+  "spellings": [
+   "1865-1K_00020"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-08T16:34:59Z",
+    "issue": 73,
+    "title": "Issue Case 02: BNL_FEMB_IO-1865-1K_00039",
+    "url": "https://github.com/lkebnl/work-log/issues/73#issuecomment-6064509045",
+    "kind": "comment",
+    "text": "during review the result test at 09292025 this board failed at rms during the machine judgement for the criteria and pass after human review the linearity issu…"
+   },
+   {
+    "time": "2026-10-01T02:53:26Z",
+    "issue": 28,
+    "title": "Day Plan and Report",
+    "url": "https://github.com/lkebnl/work-log/issues/28#issuecomment-5923777242",
+    "kind": "comment",
+    "text": "Here is today's progress update, main focus on FEMB and ISEG. 1. FEMB Production / QC - Kyra tested and passed QC on 4 boards: 1865-1J_00012 + 1865-1K_00033, a…"
+   },
+   {
+    "time": "2026-10-01T00:40:52Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5922370163",
+    "kind": "comment",
+    "text": "Kyra test FEMB BNL_FEMB_IO-1865-1K_00016 and BNL_FEMB_IO-1865-1K_00020, both pass the QC test"
+   }
+  ]
+ },
+ "1865-1K-00024": {
+  "spellings": [
+   "1865-1K_00024"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-29T15:49:31Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5893691730",
+    "kind": "comment",
+    "text": "Karla Test BNL_FEMB_IO-1865-1K_00024 and BNL_FEMB_IO-1865-1K_00032 all pass the QC Test"
+   }
+  ]
+ },
+ "1865-1K-00027": {
+  "spellings": [
+   "1865-1K_00027"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-03T00:04:49Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5963406258",
+    "kind": "comment",
+    "text": "Shanshan Tested FEMB BNL_FEMB_IO-1865-1K_00027 and BNL_FEMB_IO-1865-1K_00007, both pass the QC"
+   }
+  ]
+ },
+ "1865-1K-00030": {
+  "spellings": [
+   "1865-1K_00030"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-01T20:42:38Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5940169176",
+    "kind": "comment",
+    "text": "Lou tested BNL_FEMB_IO-1865-1K_00040 and BNL_FEMB_IO-1865-1K_00030; both passed QC. One safety note: during warm-up, Lou attempted to open the cover and lift t…"
+   }
+  ]
+ },
+ "1865-1K-00032": {
+  "spellings": [
+   "1865-1K_00032"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-29T15:49:31Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5893691730",
+    "kind": "comment",
+    "text": "Karla Test BNL_FEMB_IO-1865-1K_00024 and BNL_FEMB_IO-1865-1K_00032 all pass the QC Test"
+   }
+  ]
+ },
+ "1865-1K-00033": {
+  "spellings": [
+   "1865-1K_00033"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-01T02:53:26Z",
+    "issue": 28,
+    "title": "Day Plan and Report",
+    "url": "https://github.com/lkebnl/work-log/issues/28#issuecomment-5923777242",
+    "kind": "comment",
+    "text": "Here is today's progress update, main focus on FEMB and ISEG. 1. FEMB Production / QC - Kyra tested and passed QC on 4 boards: 1865-1J_00012 + 1865-1K_00033, a…"
+   },
+   {
+    "time": "2026-09-30T15:12:18Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5914113729",
+    "kind": "comment",
+    "text": "Kyra test FEMB BNL_FEMB_I0-1865-1J_00012 and BNL_FEMB_IO-1865-1K_00005 but the board 05 meet connector issue. after talk with Shanshan, it was hurt at CERN and…"
+   }
+  ]
+ },
+ "1865-1K-00035": {
+  "spellings": [
+   "1865-1k-35"
+  ],
+  "mentions": [
+   {
+    "time": "2026-09-28T21:31:34Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5879104265",
+    "kind": "comment",
+    "text": "Xuyang Tested 1865-1k-35 and 1865-1k-06, both pass the QC"
+   },
+   {
+    "time": "2026-09-28T16:38:56Z",
+    "issue": 28,
+    "title": "Day Plan and Report",
+    "url": "https://github.com/lkebnl/work-log/issues/28#issuecomment-5874393592",
+    "kind": "comment",
+    "text": "0928 Today, we focus on FEMB and CRP Patch panel, here is the summary Shifter for HD/VD FEMB (09232026) Lingyun tested 1826-1L-58 and 1826-1L-27. Both passed Q…"
+   }
+  ]
+ },
+ "1865-1K-00039": {
+  "spellings": [
+   "1865-1K_00039"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-08T16:36:40Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-6064538862",
+    "kind": "comment",
+    "text": "Test boards BNL_FEMB_IO-1865-1K_00039 and BNL_FEMB_IO-1865-1K_00012 board_39 have non-linearity issue board_12 pass the QC test"
+   },
+   {
+    "time": "2026-10-08T16:34:59Z",
+    "issue": 73,
+    "title": "Issue Case 02: BNL_FEMB_IO-1865-1K_00039",
+    "url": "https://github.com/lkebnl/work-log/issues/73#issuecomment-6064509045",
+    "kind": "comment",
+    "text": "during review the result test at 09292025 this board failed at rms during the machine judgement for the criteria and pass after human review the linearity issu…"
+   },
+   {
+    "time": "2026-10-08T16:31:23Z",
+    "issue": 73,
+    "title": "Issue Case 02: BNL_FEMB_IO-1865-1K_00039",
+    "url": "https://github.com/lkebnl/work-log/issues/73",
+    "kind": "issue",
+    "text": "Issue Case 02: BNL_FEMB_IO-1865-1K_00039"
+   },
+   {
+    "time": "2026-10-02T20:18:02Z",
+    "issue": 44,
+    "title": "Issue Case 01: P4 Data connector on BNL_FEMB_IO-1865-1K_00005 and BNL_FEMB_IO-1865-1K_00039",
+    "url": "https://github.com/lkebnl/work-log/issues/44#issuecomment-5960782913",
+    "kind": "comment",
+    "text": "after talk with Shanshan, for the FEMB without CE Box, we can ask Ray to repair the connector. the board BNL_FEMB_IO-1865-1K_00039 have sent to Ray for repair"
+   },
+   {
+    "time": "2026-10-02T14:03:11Z",
+    "issue": 44,
+    "title": "Issue Case 01: P4 Data connector on BNL_FEMB_IO-1865-1K_00005 and BNL_FEMB_IO-1865-1K_00039",
+    "url": "https://github.com/lkebnl/work-log/issues/44#issuecomment-5954160954",
+    "kind": "comment",
+    "text": "at present, this issue found at BNL_FEMB_IO-1865-1K_00039 and BNL_FEMB_IO-1865-1K_00005 they are in same batch"
+   },
+   {
+    "time": "2026-10-01T00:42:38Z",
+    "issue": 44,
+    "title": "Issue Case 01: P4 Data connector on BNL_FEMB_IO-1865-1K_00005 and BNL_FEMB_IO-1865-1K_00039",
+    "url": "https://github.com/lkebnl/work-log/issues/44",
+    "kind": "issue",
+    "text": "Issue Case 01: P4 Data connector on BNL_FEMB_IO-1865-1K_00005 and BNL_FEMB_IO-1865-1K_00039 the connector was broken at CERN, Krya do the QC and find it at 216…"
+   }
+  ]
+ },
+ "1865-1K-00040": {
+  "spellings": [
+   "1865-1K_00040"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-01T20:42:38Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-5940169176",
+    "kind": "comment",
+    "text": "Lou tested BNL_FEMB_IO-1865-1K_00040 and BNL_FEMB_IO-1865-1K_00030; both passed QC. One safety note: during warm-up, Lou attempted to open the cover and lift t…"
+   }
+  ]
+ },
+ "1889-1B-00002": {
+  "spellings": [
+   "1889-1B_00002"
+  ],
+  "mentions": [
+   {
+    "time": "2026-10-01T16:09:07Z",
+    "issue": 48,
+    "title": "Shanshan's review",
+    "url": "https://github.com/lkebnl/work-log/issues/48#issuecomment-5935438334",
+    "kind": "comment",
+    "text": "1. Added HWDB QR ID scan to the Visual Inspection popup (GUI/pop_window.py — show_patch_panel_scan_popup) - Added a new single-scan field \"HWDB QR ID\" (validat…"
+   }
+  ]
+ }
+}
