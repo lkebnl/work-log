@@ -230,9 +230,18 @@
  "1826-1L-00051": {
   "spellings": [
    "1826-1K_00051",
-   "1826-1L-0051"
+   "1826-1L-0051",
+   "1826-1L_00051"
   ],
   "mentions": [
+   {
+    "time": "2026-10-13T13:06:11Z",
+    "issue": 84,
+    "title": "Issue Case 03: BNL_FEMB_IO-1826-1L_00051",
+    "url": "https://github.com/lkebnl/work-log/issues/84",
+    "kind": "issue",
+    "text": "Issue Case 03: BNL_FEMB_IO-1826-1L_00051"
+   },
    {
     "time": "2026-10-05T14:02:41Z",
     "issue": 14,
