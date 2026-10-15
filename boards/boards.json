@@ -235,6 +235,14 @@
   ],
   "mentions": [
    {
+    "time": "2026-10-15T20:27:15Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-6201593832",
+    "kind": "comment",
+    "text": "Lingyun Test boards BNL_FEMB_IO-1826-1L_00051 and BNL_FEMB_IO-1826-1L_00061 during the test, the ice brock the dewar we have to move FEMB out, the bottom FEMB …"
+   },
+   {
     "time": "2026-10-13T13:06:11Z",
     "issue": 84,
     "title": "Issue Case 03: BNL_FEMB_IO-1826-1L_00051",
@@ -301,9 +309,18 @@
  },
  "1826-1L-00061": {
   "spellings": [
-   "1826-1L-61"
+   "1826-1L-61",
+   "1826-1L_00061"
   ],
   "mentions": [
+   {
+    "time": "2026-10-15T20:27:15Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-6201593832",
+    "kind": "comment",
+    "text": "Lingyun Test boards BNL_FEMB_IO-1826-1L_00051 and BNL_FEMB_IO-1826-1L_00061 during the test, the ice brock the dewar we have to move FEMB out, the bottom FEMB …"
+   },
    {
     "time": "2026-10-08T19:15:12Z",
     "issue": 14,
