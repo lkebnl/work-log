@@ -711,6 +711,14 @@
   ],
   "mentions": [
    {
+    "time": "2026-10-16T16:47:49Z",
+    "issue": 14,
+    "title": "shifter for HD / VD FEMB 09232026",
+    "url": "https://github.com/lkebnl/work-log/issues/14#issuecomment-6220333478",
+    "kind": "comment",
+    "text": "Lingyun Test boards BNL_FEMB_IO-1865-1K_00039, pass the QC"
+   },
+   {
     "time": "2026-10-08T16:36:40Z",
     "issue": 14,
     "title": "shifter for HD / VD FEMB 09232026",
