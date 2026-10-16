@@ -1,0 +1,91 @@
+name: Issue Case
+description: One board, one problem. Open when a board fails a test or shows a defect.
+title: "Issue Case NN: <SN>"
+labels: ["issue-case"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill the required fields now. Repair details go in comments as work happens;
+        complete the **Closure** section below before closing the issue.
+
+  - type: dropdown
+    id: board_type
+    attributes:
+      label: Board type
+      options:
+        - FEMB
+        - WIB
+        - CRP Patch Panel
+        - Cable
+        - ISEG / WIEC
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: sn
+    attributes:
+      label: Serial number
+      description: Full SN as printed, e.g. BNL_FEMB_IO-1865-1K_00039 or BNL/CRU-PP/IO-1889-1A/00012
+      placeholder: BNL_FEMB_IO-XXXX-XX_XXXXX
+    validations:
+      required: true
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Found at
+      options:
+        - Incoming inspection
+        - Warm checkout
+        - Cold QC (LN2)
+        - Assembly / CE box
+        - Returned from CERN / site
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Failure category (initial guess)
+      description: Pick your best guess now; correct it at closure if the root cause turns out different.
+      options:
+        - Connector (pins, ears, mating)
+        - Solder / assembly defect
+        - ASIC / component failure
+        - Test environment (noise, ice, setup)
+        - Mechanical (cover, screws, housing)
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Symptom
+      description: What failed and how it showed up (channel, test item, values, screenshots).
+    validations:
+      required: true
+
+  - type: input
+    id: parent
+    attributes:
+      label: Related tracking issue
+      description: e.g. #14 shifter, #87 patch panel track
+      placeholder: "#"
+
+  - type: textarea
+    id: closure
+    attributes:
+      label: Closure (fill before closing)
+      description: Leave as is when opening. Edit the issue body to complete it before you close.
+      value: |
+        - Root cause:
+        - Final category:
+        - Parts replaced (ref → part number):
+        - Repaired by:
+        - Retest result (pass / fail, link):
+        - Disposition (ship / spare / scrap):
+        - HWDB updated: [ ] yes
